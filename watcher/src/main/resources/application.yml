@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: watcher
+  main:
+    web-environment: false
+  jackson:
+    deserialization:
+      FAIL_ON_UNKNOWN_PROPERTIES: false
+  rabbitmq:
+    url: ${RM_RABBIT_URL}
+  cloud:
+    stream:
+      bindings:
+        output:
+          producer:
+            required-groups:
+              - posts
+          destination: feed.posts
+          content-type: application/json
+  datasource:
+    url: ${RM_DB_URL}
+
+telegram:
+  api-id: ${RM_TG_API_ID}
+  api-hash: ${RM_TG_API_HASH}
+  phone-number: ${RM_TG_NUMBER}
+  model: Bot
+  app-version: ${VERSION}
+  sys-version: ${VERSION}
+  lang-code: en
+#  storage-path: ${java.io.tmpdir}
+  storage-path: ${user.home}${file.separator}.rss-feed
+
+cloud:
+  url: ${RM_CLOUDINARY_URL}
+
+processing:
+  channels-interval-min: 60
+  channels-interval-max: 120
+  channels-interval-time-unit: SECONDS
+  posts-batch-size: 50
+  posts-interval-min: 5
+  posts-interval-max: 15
+  posts-interval-time-unit: SECONDS
+
+logging:
+  root:
+    level: INFO

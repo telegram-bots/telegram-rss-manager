@@ -1,0 +1,7 @@
+RM_BOT_TOKEN=
+RM_TG_NUMBER=
+RM_TG_API_ID=
+RM_TG_API_HASH=
+RM_CLOUDINARY_URL=
+RM_DB_URL=postgresql://postgres@db:5432/postgres
+RM_RABBIT_URL=amqp://guest:guest@rabbit:5672/

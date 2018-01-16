@@ -1,0 +1,71 @@
+plugins {
+    id "org.jetbrains.kotlin.jvm" version "1.2.10"
+    id "org.jetbrains.kotlin.kapt" version "1.2.10"
+    id "org.jetbrains.kotlin.plugin.spring" version "1.2.10"
+    id "org.jetbrains.kotlin.plugin.noarg" version "1.2.10"
+    id "org.springframework.boot" version "1.5.9.RELEASE"
+    id "io.spring.dependency-management" version "1.0.4.RELEASE"
+}
+
+group "com.github.telegram_bots.rss_manager.watcher"
+version "0.0.1"
+
+repositories {
+    mavenLocal()
+    jcenter()
+    maven { url "https://jitpack.io" }
+}
+
+noArg {
+    annotation("org.springframework.boot.context.properties.ConfigurationProperties")
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:Dalston.SR4"
+    }
+}
+
+dependencies {
+    compile("org.jetbrains.kotlin:kotlin-stdlib-jre8:1.2.10")
+    compile("org.jetbrains.kotlin:kotlin-reflect:1.2.10")
+
+    // Rabbit
+    compile("org.springframework.cloud:spring-cloud-starter-stream-rabbit") {
+        exclude module: 'spring-boot-starter-web'
+    }
+
+    // Telegram
+    compile("com.github.badoualy.kotlogram:api:e52b473") {
+        exclude module: "slf4j-simple"
+    }
+
+    // Jackson
+    compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.8.10")
+
+    // Rx
+    compile("io.reactivex.rxjava2:rxjava:2.1.8")
+    compile("io.reactivex.rxjava2:rxkotlin:2.1.0")
+
+    // Postgres
+    compile("com.github.davidmoten:rxjava2-jdbc:0.1-RC23") {
+        exclude module: "annotations"
+    }
+    compile("org.postgresql:postgresql:42.1.4")
+
+    // Logger
+    compile("io.github.microutils:kotlin-logging:1.4.9")
+
+    // Cloud
+    compile("com.cloudinary:cloudinary-http44:1.17.0")
+
+//    runtime("org.springframework.boot:spring-boot-devtools")
+
+    kapt("org.springframework.boot:spring-boot-configuration-processor")
+    compileOnly("org.springframework.boot:spring-boot-configuration-processor")
+
+    testCompile("org.springframework.boot:spring-boot-starter-test")
+    testCompile("io.kotlintest:kotlintest:2.0.7")
+}
+
+task wrapper(type: Wrapper) { gradleVersion = "4.4.1" }
