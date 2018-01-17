@@ -5,10 +5,21 @@ services:
     env_file: .app_env
     volumes:
       - ./bot:/code
-      - ~/.rss-manager/bot:/data
+      - ~/.telegram-rss-manager/bot:/data
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build: ./web
+    env_file: .app_env
+    environment:
+      - JAVA_OPTS=-Xmx256M -Xms256M
+    mem_limit: 512mb
+    volumes:
+      - ~/.telegram-rss-manager/web:/tmp
+      - ~/.telegram-rss-manager/feed-files:/data
     restart: unless-stopped
 
   generator:
@@ -16,7 +27,7 @@ services:
     env_file: .app_env
     volumes:
       - ./generator:/code
-      - ~/.rss-manager/generator:/data
+      - ~/.telegram-rss-manager/feed-files:/data
     depends_on:
       db:
         condition: service_healthy
@@ -31,7 +42,7 @@ services:
       - JAVA_OPTS=-Xmx256M -Xms256M
     mem_limit: 512mb
     volumes:
-      - ~/.telegram-channels-feed/wacher:/tmp
+      - ~/.telegram-rss-manager/wacher:/tmp
     depends_on:
       db:
         condition: service_healthy
@@ -42,7 +53,7 @@ services:
   db:
     build: init/db
     volumes:
-      - ~/.telegram-channels-feed/db:/var/lib/postgresql/data
+      - ~/.telegram-rss-manager/db:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     restart: unless-stopped
@@ -51,7 +62,7 @@ services:
     build: init/rabbit
     hostname: rabbit
     volumes:
-      - ~/.telegram-channels-feed/rabbit:/var/lib/rabbitmq
+      - ~/.telegram-rss-manager/rabbit:/var/lib/rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"

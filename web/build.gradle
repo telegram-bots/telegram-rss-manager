@@ -1,0 +1,31 @@
+plugins {
+    id "org.jetbrains.kotlin.jvm" version "1.2.20"
+    id "org.jetbrains.kotlin.plugin.spring" version "1.2.20"
+    id "org.springframework.boot" version "1.5.9.RELEASE"
+}
+
+group "com.github.telegram_bots.rss_manager.web"
+version "0.0.1"
+
+repositories {
+    mavenLocal()
+    jcenter()
+}
+
+dependencies {
+    compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.20")
+    compile("org.jetbrains.kotlin:kotlin-reflect:1.2.20")
+
+    // Web
+    compile("org.springframework.boot:spring-boot-starter-web")
+
+    // Logger
+    compile("io.github.microutils:kotlin-logging:1.4.9")
+
+//    runtime("org.springframework.boot:spring-boot-devtools")
+
+    testCompile("org.springframework.boot:spring-boot-starter-test")
+    testCompile("io.kotlintest:kotlintest:2.0.7")
+}
+
+task wrapper(type: Wrapper) { gradleVersion = "4.4.1" }

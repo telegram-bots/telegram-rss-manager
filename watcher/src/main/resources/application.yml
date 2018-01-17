@@ -29,7 +29,7 @@ telegram:
   sys-version: ${VERSION}
   lang-code: en
 #  storage-path: ${java.io.tmpdir}
-  storage-path: ${user.home}${file.separator}.rss-feed
+  storage-path: ${user.home}${file.separator}.telegram-rss-manager${file.separator}watcher
 
 cloud:
   url: ${RM_CLOUDINARY_URL}
