@@ -1,5 +1,5 @@
 plugins {
-    id "java"
+    id "org.jetbrains.kotlin.jvm" version "1.2.20"
     id "application"
     id "com.github.johnrengelman.shadow" version "2.0.2" apply false
 }
@@ -17,15 +17,18 @@ repositories {
 }
 
 dependencies {
+    // Commons
+    compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.20")
+
     // Web
-    compile("io.reactivex:rxnetty-http:0.5.2")
+    compile("io.netty:netty-handler:4.1.19.Final")
+    compile("io.netty:netty-codec-http:4.1.19.Final")
 
     // Logger
+    compile("io.github.microutils:kotlin-logging:1.4.9")
     compile("ch.qos.logback:logback-classic:1.2.3")
 
-    // Commons
-    compile("org.apache.commons:commons-lang3:3.7")
-    compileOnly("org.projectlombok:lombok:1.16.20")
+    testCompile("io.kotlintest:kotlintest:2.0.7")
 }
 
 task wrapper(type: Wrapper) { gradleVersion = "4.4.1" }
