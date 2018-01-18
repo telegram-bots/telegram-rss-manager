@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <include resource="org/springframework/boot/logging/logback/base.xml"/>
-    <property name="LOG_FILE" value="${LOG_TEMP:-${java.io.tmpdir:-/tmp}}/}log-rss-manager-watcher.log"/>
+    <property name="LOG_FILE" value="${LOG_TEMP:-${java.io.tmpdir:-/tmp}/}log-rss-manager-watcher.log"/>
 
     <springProperty
             scope="context"

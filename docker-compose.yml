@@ -20,6 +20,8 @@ services:
     volumes:
       - ~/.telegram-rss-manager/web:/tmp
       - ~/.telegram-rss-manager/feed-files:/data
+    ports:
+      - "8691:8691"
     restart: unless-stopped
 
   generator:
