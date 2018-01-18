@@ -32,11 +32,14 @@ public class WebApplication {
                 .start((req, resp) -> {
                     try {
                         val params = getParams(req);
-                        if (params.length != 3 || !Objects.equals(params[0], "feed") || !isNumeric(params[1])) {
+                        if (params.length != 2 || !isNumeric(params[0])) {
+                            if (Objects.equals(params[0], "favicon.ico")) {
+                                return resp.setStatus(OK).sendHeaders();
+                            }
                             return resp.setStatus(BAD_REQUEST).sendHeaders();
                         }
 
-                        val file = storagePath.resolve(Long.parseLong(params[1]) + "_" + params[2] + ".xml");
+                        val file = storagePath.resolve(Long.parseLong(params[0]) + "_" + params[1] + ".xml");
                         if (!exists(file)) {
                             return resp.setStatus(NOT_FOUND).sendHeaders();
                         }
