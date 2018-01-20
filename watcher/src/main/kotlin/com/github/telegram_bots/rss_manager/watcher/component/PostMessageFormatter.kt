@@ -46,6 +46,10 @@ object PostMessageFormatter {
         val value = extract(byteArray)
         val result = when (this) {
             is TLMessageEntityTextUrl -> """<a href="$url">$value</a>"""
+            is TLMessageEntityUrl -> """<a href="$value">$value</a>"""
+            is TLMessageEntityEmail -> """<a href="mailto:$value">$value</a>"""
+            is TLMessageEntityMention -> """<a href="$value">$value</a>"""
+            is TLMessageEntityMentionName -> """<a href="tg://user?id=$userId">$value</a>"""
             is TLMessageEntityBold -> """<b>$value</b>"""
             is TLMessageEntityItalic -> """<i>$value</i>"""
             is TLMessageEntityCode -> """<code>$value</code>"""

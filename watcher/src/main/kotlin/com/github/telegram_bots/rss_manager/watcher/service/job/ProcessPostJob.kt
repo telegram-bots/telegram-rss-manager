@@ -24,36 +24,36 @@ class ProcessPostJob(private val channel: Channel) : Function<TLMessage, Single<
     }
 }
 
-internal fun TLMessage.getType(): PostType = when (media) {
-    null, is TLMessageMediaEmpty, is TLMessageMediaUnsupported -> RAW_TEXT
-    is TLMessageMediaWebPage -> HTML_TEXT
-    is TLMessageMediaPhoto -> IMAGE
-    is TLMessageMediaDocument -> when (media?.getAbsMediaInput()?.mimeType) {
+internal fun TLMessage.getType(): PostType = when {
+    media is TLMessageMediaWebPage || entities?.isNotEmpty() ?: false -> HTML_TEXT
+    media == null || media is TLMessageMediaEmpty || media is TLMessageMediaUnsupported -> RAW_TEXT
+    media is TLMessageMediaPhoto -> IMAGE
+    media is TLMessageMediaDocument -> when (media?.getAbsMediaInput()?.mimeType) {
         "image/jpeg" -> IMAGE
         "image/webp" -> STICKER
         "video/mp4" -> VIDEO
         "audio/mpeg" -> AUDIO
         else -> FILE
     }
-    is TLMessageMediaGeo -> GEO
-    is TLMessageMediaGeoLive -> LIVE_GEO
-    is TLMessageMediaInvoice -> INVOICE
-    is TLMessageMediaContact -> CONTACT
-    is TLMessageMediaVenue -> VENUE
-    is TLMessageMediaGame -> GAME
+    media is TLMessageMediaGeo -> GEO
+    media is TLMessageMediaGeoLive -> LIVE_GEO
+    media is TLMessageMediaInvoice -> INVOICE
+    media is TLMessageMediaContact -> CONTACT
+    media is TLMessageMediaVenue -> VENUE
+    media is TLMessageMediaGame -> GAME
     else -> throw IllegalArgumentException(media.toString())
 }
 
-internal fun TLMessage.formatContent(): String = when (media) {
-    null, is TLMessageMediaEmpty, is TLMessageMediaUnsupported -> message
-    is TLMessageMediaWebPage -> PostMessageFormatter.format(this)
-    is TLMessageMediaPhoto -> ((media as TLMessageMediaPhoto?)?.caption ?: "")
-    is TLMessageMediaDocument -> ((media as TLMessageMediaDocument?)?.caption ?: "")
-    is TLMessageMediaGeo -> message
-    is TLMessageMediaGeoLive -> message
-    is TLMessageMediaInvoice -> message
-    is TLMessageMediaContact -> message
-    is TLMessageMediaVenue -> message
-    is TLMessageMediaGame -> message
+internal fun TLMessage.formatContent(): String = when {
+    media is TLMessageMediaWebPage || entities?.isNotEmpty() ?: false -> PostMessageFormatter.format(this)
+    media == null || media is TLMessageMediaEmpty || media is TLMessageMediaUnsupported -> message
+    media is TLMessageMediaPhoto -> ((media as TLMessageMediaPhoto?)?.caption ?: "")
+    media is TLMessageMediaDocument -> ((media as TLMessageMediaDocument?)?.caption ?: "")
+    media is TLMessageMediaGeo -> message
+    media is TLMessageMediaGeoLive -> message
+    media is TLMessageMediaInvoice -> message
+    media is TLMessageMediaContact -> message
+    media is TLMessageMediaVenue -> message
+    media is TLMessageMediaGame -> message
     else -> throw IllegalArgumentException(media.toString())
 }
