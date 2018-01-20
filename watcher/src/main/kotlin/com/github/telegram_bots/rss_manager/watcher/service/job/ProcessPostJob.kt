@@ -1,5 +1,6 @@
 package com.github.telegram_bots.rss_manager.watcher.service.job
 
+import com.github.badoualy.telegram.api.utils.getAbsMediaInput
 import com.github.badoualy.telegram.tl.api.*
 import com.github.telegram_bots.rss_manager.watcher.component.PostMessageFormatter
 import com.github.telegram_bots.rss_manager.watcher.domain.Channel
@@ -24,10 +25,16 @@ class ProcessPostJob(private val channel: Channel) : Function<TLMessage, Single<
 }
 
 internal fun TLMessage.getType(): PostType = when (media) {
-    null, is TLMessageMediaEmpty, is TLMessageMediaUnsupported -> TEXT
-    is TLMessageMediaPhoto -> PHOTO
-    is TLMessageMediaDocument -> DOCUMENT
-    is TLMessageMediaWebPage -> WEB_PAGE
+    null, is TLMessageMediaEmpty, is TLMessageMediaUnsupported -> RAW_TEXT
+    is TLMessageMediaWebPage -> HTML_TEXT
+    is TLMessageMediaPhoto -> IMAGE
+    is TLMessageMediaDocument -> when (media?.getAbsMediaInput()?.mimeType) {
+        "image/jpeg" -> IMAGE
+        "image/webp" -> STICKER
+        "video/mp4" -> VIDEO
+        "audio/mpeg" -> AUDIO
+        else -> FILE
+    }
     is TLMessageMediaGeo -> GEO
     is TLMessageMediaGeoLive -> LIVE_GEO
     is TLMessageMediaInvoice -> INVOICE
@@ -38,10 +45,10 @@ internal fun TLMessage.getType(): PostType = when (media) {
 }
 
 internal fun TLMessage.formatContent(): String = when (media) {
-    null, is TLMessageMediaEmpty, is TLMessageMediaUnsupported -> PostMessageFormatter.format(this)
+    null, is TLMessageMediaEmpty, is TLMessageMediaUnsupported -> message
+    is TLMessageMediaWebPage -> PostMessageFormatter.format(this)
     is TLMessageMediaPhoto -> ((media as TLMessageMediaPhoto?)?.caption ?: "")
     is TLMessageMediaDocument -> ((media as TLMessageMediaDocument?)?.caption ?: "")
-    is TLMessageMediaWebPage -> message
     is TLMessageMediaGeo -> message
     is TLMessageMediaGeoLive -> message
     is TLMessageMediaInvoice -> message

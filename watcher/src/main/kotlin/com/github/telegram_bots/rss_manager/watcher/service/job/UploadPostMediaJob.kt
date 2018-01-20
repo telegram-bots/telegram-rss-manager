@@ -8,6 +8,8 @@ import com.github.badoualy.telegram.api.utils.getAbsMediaInput
 import com.github.badoualy.telegram.tl.api.TLMessage
 import com.github.badoualy.telegram.tl.api.upload.TLFile
 import com.github.telegram_bots.rss_manager.watcher.domain.FileURL
+import com.github.telegram_bots.rss_manager.watcher.domain.PostType.IMAGE
+import com.github.telegram_bots.rss_manager.watcher.domain.PostType.STICKER
 import io.reactivex.Maybe
 import io.reactivex.Observable
 import io.reactivex.Single
@@ -21,18 +23,21 @@ import java.util.*
 class UploadPostMediaJob(private val client: TelegramClient, private val cloud: Cloudinary)
     : Function<TLMessage, Single<Optional<String>>> {
     companion object {
+        private val SUPPORTED_TYPES = EnumSet.of(IMAGE, STICKER)
         private const val LARGE_SIZE = 20_000_000
         private const val CHUNK_SIZE = 5_000_000
+        private const val MAX_SIZE = 5_000_000
     }
 
     override fun apply(message: TLMessage): Single<Optional<FileURL>> = defer {
         val media = message.media?.getAbsMediaInput()
+        val type = message.getType()
 
-        if (media == null) Single.just(Optional.empty())
+        if (media == null || type !in SUPPORTED_TYPES) Single.just(Optional.empty())
         else {
             val tmpFile = Files.createTempFile("rss", null)
             Maybe.just(media)
-                    .filter { it.mimeType == "image/jpeg" } // Just images for now
+                    .filter { it.size <= MAX_SIZE }
                     .flatMapObservable { downloadFile(media) }
                     .reduce(tmpFile, { file, data -> Files.write(file, data.bytes.data, APPEND) })
                     .filter { Files.size(it) > 0 }
