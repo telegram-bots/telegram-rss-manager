@@ -1,38 +1,23 @@
 package com.github.telegram_bots.rss_manager.watcher.domain
 
 import java.sql.ResultSet
-import java.time.Instant
 
 data class Channel(
         val id: Int,
-        val telegramId: Int,
-        val hash: Long,
         val url: String,
         val name: String,
-        val lastPostId: Int,
-        val lastSentId: Int?,
-        val lastInfoUpdate: Instant,
-        val createdAt: Instant
+        val lastPostId: Int
 ) {
     companion object {
-        const val EMPTY_TG_ID = -1
-        const val EMPTY_HASH = -1L
         const val EMPTY_LAST_POST_ID = -1
     }
 
     constructor(rs: ResultSet) : this(
             id = rs.getInt("id"),
-            telegramId = rs.getObject("telegram_id")?.let { it as? Int } ?: EMPTY_TG_ID,
-            hash = rs.getObject("hash")?.let { it as? Long } ?: EMPTY_HASH,
             url = rs.getString("url"),
             name = rs.getString("name"),
-            lastPostId = rs.getObject("last_post_id")?.let { it as? Int } ?: EMPTY_LAST_POST_ID,
-            lastSentId = rs.getObject("last_sent_id")?.let { it as? Int },
-            lastInfoUpdate = rs.getTimestamp("last_info_update").toInstant(),
-            createdAt = rs.getTimestamp("created_at").toInstant()
+            lastPostId = rs.getObject("last_post_id")?.let { it as? Int } ?: EMPTY_LAST_POST_ID
     )
 
-    fun isEmpty() = telegramId == EMPTY_TG_ID
-            || hash == EMPTY_HASH
-            || lastPostId == EMPTY_LAST_POST_ID
+    fun isNew() = lastPostId == EMPTY_LAST_POST_ID
 }

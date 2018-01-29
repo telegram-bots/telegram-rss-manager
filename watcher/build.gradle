@@ -1,8 +1,8 @@
 plugins {
-    id "org.jetbrains.kotlin.jvm" version "1.2.20"
-    id "org.jetbrains.kotlin.kapt" version "1.2.20"
-    id "org.jetbrains.kotlin.plugin.spring" version "1.2.20"
-    id "org.jetbrains.kotlin.plugin.noarg" version "1.2.20"
+    id "org.jetbrains.kotlin.jvm" version "1.2.21"
+    id "org.jetbrains.kotlin.kapt" version "1.2.21"
+    id "org.jetbrains.kotlin.plugin.spring" version "1.2.21"
+    id "org.jetbrains.kotlin.plugin.noarg" version "1.2.21"
     id "org.springframework.boot" version "1.5.9.RELEASE"
     id "io.spring.dependency-management" version "1.0.4.RELEASE"
 }
@@ -27,8 +27,8 @@ dependencyManagement {
 }
 
 dependencies {
-    compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.20")
-    compile("org.jetbrains.kotlin:kotlin-reflect:1.2.20")
+    compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.21")
+    compile("org.jetbrains.kotlin:kotlin-reflect:1.2.21")
 
     // Rabbit
     compile("org.springframework.cloud:spring-cloud-starter-stream-rabbit") {
@@ -56,8 +56,8 @@ dependencies {
     // Logger
     compile("io.github.microutils:kotlin-logging:1.4.9")
 
-    // Cloud
-    compile("com.cloudinary:cloudinary-http44:1.17.0")
+    // Parsing
+    compile("org.jsoup:jsoup:1.11.2")
 
 //    runtime("org.springframework.boot:spring-boot-devtools")
 

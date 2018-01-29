@@ -15,5 +15,4 @@ class SendPostToQueueJob(private val source: Source) : Function<Post, Completabl
             .toCompletable()
 }
 
-class FailedToSendToQueueException(post: Post) :
-        RuntimeException("Failed to send to queue $post", null, false, false)
+class FailedToSendToQueueException(post: Post) : RuntimeException("Failed to send to queue $post", null, false, false)

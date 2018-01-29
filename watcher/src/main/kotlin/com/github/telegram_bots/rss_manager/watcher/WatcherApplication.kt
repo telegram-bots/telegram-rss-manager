@@ -1,8 +1,5 @@
 package com.github.telegram_bots.rss_manager.watcher
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.github.telegram_bots.rss_manager.watcher.domain.FileURL
-import com.github.telegram_bots.rss_manager.watcher.domain.PostType
 import mu.KLogging
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner

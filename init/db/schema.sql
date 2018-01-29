@@ -13,13 +13,10 @@ CREATE SEQUENCE IF NOT EXISTS channel_id_seq;
 -- Table
 CREATE TABLE IF NOT EXISTS channels (
   id               INT PRIMARY KEY DEFAULT nextval('channel_id_seq'),
-  telegram_id      INT UNIQUE,
-  hash             BIGINT,
   url              VARCHAR(32) UNIQUE      NOT NULL,
   name             VARCHAR(255)            NOT NULL,
   last_post_id     INT,
   last_sent_id     INT,
-  last_info_update TIMESTAMP               NOT NULL,
   created_at       TIMESTAMP DEFAULT now() NOT NULL,
   updated_at       TIMESTAMP DEFAULT now() NOT NULL
 );

@@ -1,6 +1,5 @@
 package com.github.telegram_bots.rss_manager.watcher.service
 
-import com.github.badoualy.telegram.api.TelegramClient
 import com.github.badoualy.telegram.mtproto.exception.RpcErrors.AUTH_KEY_UNREGISTERED
 import com.github.badoualy.telegram.mtproto.exception.getError
 import com.github.badoualy.telegram.tl.api.auth.TLAuthorization
@@ -14,8 +13,10 @@ import java.util.*
 import javax.annotation.PostConstruct
 
 @Service
-class TelegramAuthorizer(private val props: TelegramProperties, private val client: TelegramClient) {
+class TelegramAuthorizer(private val props: TelegramProperties, private val clientSupplier: TelegramClientSupplier) {
     companion object : KLogging()
+
+    private val client = clientSupplier.getClient()
 
     @PostConstruct
     fun init() = authorize()
@@ -34,6 +35,7 @@ class TelegramAuthorizer(private val props: TelegramProperties, private val clie
                     }
                 }
                 .doOnError(::onError)
+                .doAfterTerminate(client::close)
                 .blockingAwait()
     }
 

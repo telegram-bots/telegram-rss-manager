@@ -35,13 +35,9 @@ cloud:
   url: ${RM_CLOUDINARY_URL}
 
 processing:
-  channels-interval-min: 60
-  channels-interval-max: 120
-  channels-interval-time-unit: SECONDS
-  posts-batch-size: 50
-  posts-interval-min: 5
-  posts-interval-max: 15
-  posts-interval-time-unit: SECONDS
+  channel-processing-delay: 2
+  download-batch-size: 50
+  download-concurrency: 10
 
 logging:
   root:

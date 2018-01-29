@@ -25,6 +25,6 @@ class DBConfig {
                 ?.joinToString(separator = "&", prefix = "?")
                 ?: ""
 
-        return "jdbc:${uri.scheme}://${uri.host}:${uri.port}${uri.path}$query";
+        return "jdbc:${uri.scheme}://${uri.host}:${uri.port}${uri.path}$query"
     }
 }

@@ -19,7 +19,4 @@ class TelegramConfig {
             langCode = props.langCode,
             systemLangCode= props.langCode
     )
-
-    @Bean
-    fun telegramClient(app: TelegramApp, cfgStorage: TelegramApiStorage) = Kotlogram.getClient(app, cfgStorage)
 }
