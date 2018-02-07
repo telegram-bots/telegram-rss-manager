@@ -1,7 +1,5 @@
 package com.github.telegram_bots.rss_manager.watcher.config
 
-import com.github.badoualy.telegram.api.Kotlogram
-import com.github.badoualy.telegram.api.TelegramApiStorage
 import com.github.badoualy.telegram.api.TelegramApp
 import com.github.telegram_bots.rss_manager.watcher.config.properties.TelegramProperties
 import org.springframework.context.annotation.Bean

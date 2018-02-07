@@ -8,6 +8,8 @@ class ChannelGenerator : Gen<Channel> {
             id = Gen.int().generate(),
             url = Gen.string().generate(),
             name = Gen.string().generate(),
-            lastPostId = Gen.int().generate()
+            lastPostId = Gen.int().generate(),
+            inWork = Gen.bool().generate(),
+            gracefulStop = Gen.bool().generate()
     )
 }

@@ -12,13 +12,15 @@ LANGUAGE 'plpgsql';
 CREATE SEQUENCE IF NOT EXISTS channel_id_seq;
 -- Table
 CREATE TABLE IF NOT EXISTS channels (
-  id               INT PRIMARY KEY DEFAULT nextval('channel_id_seq'),
-  url              VARCHAR(32) UNIQUE      NOT NULL,
-  name             VARCHAR(255)            NOT NULL,
-  last_post_id     INT,
-  last_sent_id     INT,
-  created_at       TIMESTAMP DEFAULT now() NOT NULL,
-  updated_at       TIMESTAMP DEFAULT now() NOT NULL
+  id            INT PRIMARY KEY DEFAULT nextval('channel_id_seq'),
+  url           VARCHAR(32) UNIQUE      NOT NULL,
+  name          VARCHAR(255)            NOT NULL,
+  last_post_id  INT,
+  last_sent_id  INT,
+  in_work       BOOLEAN DEFAULT FALSE   NOT NULL,
+  graceful_stop BOOLEAN DEFAULT FALSE   NOT NULL,
+  created_at    TIMESTAMP DEFAULT now() NOT NULL,
+  updated_at    TIMESTAMP DEFAULT now() NOT NULL
 );
 -- Indexes
 CREATE INDEX IF NOT EXISTS url_index
@@ -52,12 +54,11 @@ EXECUTE PROCEDURE update_updated_at();
 
 -- Table
 CREATE TABLE IF NOT EXISTS subscriptions (
-  user_id      INT                     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-  channel_id   INT                     NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
-  last_sent_id INT,
-  name         VARCHAR(255)            NOT NULL,
-  created_at   TIMESTAMP DEFAULT now() NOT NULL,
-  updated_at   TIMESTAMP DEFAULT now() NOT NULL,
+  user_id    INT                     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  channel_id INT                     NOT NULL REFERENCES channels (id) ON DELETE CASCADE,
+  name       VARCHAR(255)            NOT NULL,
+  created_at TIMESTAMP DEFAULT now() NOT NULL,
+  updated_at TIMESTAMP DEFAULT now() NOT NULL,
   CONSTRAINT u_ch_constraint UNIQUE (user_id, channel_id)
 );
 -- Triggers
