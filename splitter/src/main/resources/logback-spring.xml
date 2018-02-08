@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+    <property name="LOG_FILE" value="${LOG_TEMP:-${java.io.tmpdir:-/tmp}/}log-rss-manager-splitter.log"/>
+
+    <springProperty
+            scope="context"
+            name="root.level"
+            source="logging.root.level"
+            defaultValue="INFO"/>
+
+    <logger name="org.springframework" level="WARN"/>
+    <logger name="org.springframework.amqp.rabbit.listener" level="ERROR" />
+    <logger name="org.davidmoten.rx.jdbc" level="WARN"/>
+    <logger name="com.github.badoualy.telegram.tl" level="ERROR"/>
+    <logger name="com.github.badoualy.telegram.api" level="ERROR"/>
+    <logger name="com.github.badoualy.telegram.mtproto" level="ERROR"/>
+    <logger name="com.github.telegram_bots" level="DEBUG"/>
+
+    <root level="${root.level}">
+        <appender-ref ref="FILE" />
+        <appender-ref ref="CONSOLE" />
+    </root>
+</configuration>

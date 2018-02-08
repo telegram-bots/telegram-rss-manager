@@ -37,11 +37,6 @@ class PostUpdater(
     private val scheduler = Schedulers.from(Executors.newSingleThreadExecutor({ Thread(it, "posts-updater") }))
     private var disposable: Disposable? = null
 
-    @PreDestroy
-    fun onDestroy() {
-        disposable?.dispose()
-    }
-
     override fun onApplicationEvent(event: ApplicationReadyEvent) {
         iterateChannels()
                 .flatMapCompletable { channel ->
@@ -59,6 +54,11 @@ class PostUpdater(
                 .doOnError(this::onError)
                 .observeOn(scheduler)
                 .repeatedTask()
+    }
+
+    @PreDestroy
+    fun onDestroy() {
+        disposable?.dispose()
     }
 
     private fun iterateChannels() = Flowable

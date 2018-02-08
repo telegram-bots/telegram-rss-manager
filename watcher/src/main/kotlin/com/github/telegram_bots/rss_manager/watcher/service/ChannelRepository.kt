@@ -28,7 +28,7 @@ class ChannelRepository(private val jdbc: JdbcTemplate) {
         .query(
                 """
                 | SELECT * FROM channels
-                | WHERE in_work = FALSE OR (in_work = TRUE AND graceful_stop = FALSE)
+                | WHERE in_work = FALSE
                 | ORDER BY updated_at DESC
                 | LIMIT 1
                 """.trimMargin(),

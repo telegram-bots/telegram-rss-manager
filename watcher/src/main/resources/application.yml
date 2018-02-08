@@ -15,7 +15,7 @@ spring:
           producer:
             required-groups:
               - posts
-          destination: feed.posts
+          destination: ${spring.application.name}.feed
           content-type: application/json
   datasource:
     url: ${RM_DB_URL}
@@ -30,9 +30,6 @@ telegram:
   lang-code: en
 #  storage-path: ${java.io.tmpdir}
   storage-path: ${user.home}${file.separator}.telegram-rss-manager${file.separator}watcher
-
-cloud:
-  url: ${RM_CLOUDINARY_URL}
 
 processing:
   channel-processing-delay: 2

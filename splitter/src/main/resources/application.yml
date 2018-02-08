@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: splitter
+  main:
+    web-environment: false
+  jackson:
+    deserialization:
+      FAIL_ON_UNKNOWN_PROPERTIES: false
+  rabbitmq:
+    url: ${RM_RABBIT_URL}
+  cloud:
+    stream:
+      rabbit:
+        bindings:
+          input:
+            consumer:
+              transacted: true
+              requeueRejected: true
+      bindings:
+        input:
+          consumer:
+            maxAttempts: 1
+          group: posts
+          destination: watcher.feed
+          content-type: application/json
+        output:
+          producer:
+            x-max-length: 500
+            x-overflow: drop-head
+          destination: ${spring.application.name}.feed
+          content-type: application/json
+  datasource:
+    url: ${RM_DB_URL}
+
+logging:
+  root:
+    level: INFO

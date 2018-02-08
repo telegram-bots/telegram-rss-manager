@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/bot/bot.iml" filepath="$PROJECT_DIR$/bot/bot.iml" />
       <module fileurl="file://$PROJECT_DIR$/generator/generator.iml" filepath="$PROJECT_DIR$/generator/generator.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/splitter.iml" filepath="$PROJECT_DIR$/.idea/modules/splitter.iml" />
       <module fileurl="file://$PROJECT_DIR$/telegram-rss-manager.iml" filepath="$PROJECT_DIR$/telegram-rss-manager.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/watcher.iml" filepath="$PROJECT_DIR$/.idea/modules/watcher.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/web.iml" filepath="$PROJECT_DIR$/.idea/modules/web.iml" />

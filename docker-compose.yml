@@ -44,7 +44,22 @@ services:
       - JAVA_OPTS=-Xmx256M -Xms256M
     mem_limit: 512mb
     volumes:
-      - ~/.telegram-rss-manager/wacher:/tmp
+      - ~/.telegram-rss-manager/watcher:/tmp
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+    restart: unless-stopped
+
+  splitter:
+    build: ./splitter
+    env_file: .app_env
+    environment:
+      - JAVA_OPTS=-Xmx256M -Xms256M
+    mem_limit: 512mb
+    volumes:
+      - ~/.telegram-rss-manager/splitter:/tmp
     depends_on:
       db:
         condition: service_healthy
