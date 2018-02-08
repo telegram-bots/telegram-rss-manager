@@ -21,7 +21,7 @@ noArg {
 
 dependencyManagement {
     imports {
-        mavenBom "org.springframework.cloud:spring-cloud-dependencies:Ditmars.SR3"
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:Dalston.SR4"
     }
 }
 
@@ -35,7 +35,7 @@ dependencies {
     }
 
     // Jackson
-    compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.8.10")
+    compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.2")
 
     // Rx
     compile("io.reactivex.rxjava2:rxjava:2.1.9")

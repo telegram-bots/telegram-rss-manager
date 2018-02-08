@@ -28,8 +28,8 @@ telegram:
   app-version: ${VERSION}
   sys-version: ${VERSION}
   lang-code: en
-#  storage-path: ${java.io.tmpdir}
-  storage-path: ${user.home}${file.separator}.telegram-rss-manager${file.separator}watcher
+  storage-path: ${java.io.tmpdir}
+#  storage-path: ${user.home}${file.separator}.telegram-rss-manager${file.separator}watcher
 
 processing:
   channel-processing-delay: 2

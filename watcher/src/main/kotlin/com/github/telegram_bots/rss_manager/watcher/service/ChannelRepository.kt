@@ -12,17 +12,17 @@ class ChannelRepository(private val jdbc: JdbcTemplate) {
                 """
                 | UPDATE channels
                 | SET
-                |   last_post_id = CASE WHEN ? > last_post_id OR last_post_id IS NULL THEN ? ELSE last_post_id END,
-                |   in_work = ?,
-                |   graceful_stop = ?
+                |   last_post_id = CASE WHEN ? > last_post_id OR last_post_id IS NULL THEN ? ELSE last_post_id END
                 | WHERE id = ?
                 """.trimMargin(),
                 channel.lastPostId,
                 channel.lastPostId,
-                channel.inWork,
-                channel.gracefulStop,
                 channel.id
         )
+
+    fun lock(channel: Channel) = jdbc.update("UPDATE channels SET in_work = TRUE WHERE id = ?", channel.id)
+
+    fun release(channel: Channel) = jdbc.update("UPDATE channels SET in_work = FALSE WHERE id = ?", channel.id)
 
     fun firstNonUpdated() = jdbc
         .query(

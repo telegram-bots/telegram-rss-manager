@@ -32,9 +32,7 @@ class UserRepository:
                 """
                 INSERT INTO users (telegram_id)
                 VALUES (:telegram_id)
-                ON CONFLICT DO UPDATE 
-                  SET x = 1;
-                  SET y = 2;
+                ON CONFLICT DO NOTHING;
                 SELECT * FROM users WHERE telegram_id = :telegram_id;
                 """
             )) \

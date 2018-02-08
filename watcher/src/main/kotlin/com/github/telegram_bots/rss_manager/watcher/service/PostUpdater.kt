@@ -1,5 +1,6 @@
 package com.github.telegram_bots.rss_manager.watcher.service
 
+import com.github.badoualy.telegram.api.TelegramClient
 import com.github.badoualy.telegram.tl.exception.RpcErrorException
 import com.github.telegram_bots.rss_manager.watcher.config.properties.ProcessingProperties
 import com.github.telegram_bots.rss_manager.watcher.domain.Channel
@@ -27,7 +28,7 @@ import javax.annotation.PreDestroy
 @EnableBinding(Source::class)
 class PostUpdater(
         private val props: ProcessingProperties,
-        private val clientSupplier: TelegramClientSupplier,
+        private val client: TelegramClient,
         private val source: Source,
         private val repository: ChannelRepository,
         private val transaction: TransactionTemplate
@@ -46,8 +47,8 @@ class PostUpdater(
                         .flatMapPublisher(this::process)
                         .flatMapSingle(this::sendToQueue)
                         .flatMapCompletable(this::markAsDownloaded)
-                        .doAfterTerminate { release(channel) }
-                        .doOnDispose { release(channel) }
+                        .doAfterTerminate { repository.release(channel) }
+                        .doOnDispose { repository.release(channel) }
                 }
                 .doOnSubscribe(this::onSubscribe)
                 .doOnTerminate(this::onTerminate)
@@ -70,13 +71,14 @@ class PostUpdater(
 
     private fun resolve(channel: Channel) = Single.just(channel)
             .flatMap { ch ->
-                if (!channel.isNew()) Single.just(ch)
+                if (!ch.isNew()) Single.just(ch)
                 else Single.just(ch)
-                        .flatMap(ResolveChannelLastPostIdJob(clientSupplier))
-                        .flatMap { channel -> Completable
-                                .fromCallable { repository.update(channel) }
-                                .andThen(Single.just(channel))
+                        .flatMap(ResolveChannelLastPostIdJob(client))
+                        .flatMap { ch2 -> Completable
+                                .fromCallable { repository.update(ch2) }
+                                .andThen(Single.just(ch2))
                         }
+                        .doOnError { logger.error { it } }
                         .retry(this::retry)
                         .doOnSuccess { logger.info { "[RESOLVE CHANNEL] $ch" } }
             }
@@ -117,8 +119,6 @@ class PostUpdater(
             .doOnSuccess { logger.debug { "[MARK DOWNLOADED] $it" } }
             .flatMapCompletable { channel -> Completable.fromCallable { repository.update(channel) } }
 
-    private fun release(channel: Channel) = repository.update(channel.copy(inWork = false, gracefulStop = true))
-
     private fun onSubscribe(disposable: Disposable) {
         this.disposable = disposable
         logger.info { "[START POST UPDATER]" }
@@ -139,7 +139,7 @@ class PostUpdater(
     }
 
     private fun Completable.repeatedTask() {
-        doOnComplete { this.repeatedTask() }.subscribe()
+        doOnComplete { this.delay(1, java.util.concurrent.TimeUnit.SECONDS).repeatedTask() }.subscribe()
     }
 }
 

@@ -1,5 +1,4 @@
-package com.github.telegram_bots.rss_manager.splitter.domain
-
+package com.github.telegram_bots.rss_manager.web.domain
 typealias FileURL = String
 
 data class Post(

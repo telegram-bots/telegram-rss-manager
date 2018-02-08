@@ -12,3 +12,14 @@ data class Post(
         val channelLink: String,
         val channelName: String
 )
+
+enum class PostType {
+    TEXT,
+    IMAGE,
+    STICKER,
+    AUDIO,
+    VIDEO,
+    FILE,
+    GEO,
+    CONTACT
+}

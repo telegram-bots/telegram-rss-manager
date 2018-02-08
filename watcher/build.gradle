@@ -41,10 +41,10 @@ dependencies {
     }
 
     // Jackson
-    compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.8.10")
+    compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.2")
 
     // Rx
-    compile("io.reactivex.rxjava2:rxjava:2.1.8")
+    compile("io.reactivex.rxjava2:rxjava:2.1.9")
     compile("io.reactivex.rxjava2:rxkotlin:2.1.0")
 
     // Postgres

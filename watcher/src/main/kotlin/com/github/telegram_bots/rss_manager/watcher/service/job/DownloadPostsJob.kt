@@ -18,8 +18,14 @@ class DownloadPostsJob(
         private val scheduler: Scheduler = Schedulers.single()
 ) : Function<Channel, Flowable<Document>> {
     override fun apply(channel: Channel): Flowable<Document> = Flowable.range(channel.lastPostId + 1, batchSize)
-            .map { channel.toLink(it) }
-            .flatMapMaybe({ it.download(scheduler) }, false, maxConcurrency)
+            .window(5)
+            .flatMapSingle {
+                it.map { postId -> channel.toLink(postId) }
+                        .flatMapMaybe({ it.download(scheduler) }, false, maxConcurrency)
+                        .toList()
+            }
+            .takeWhile { it.isNotEmpty() }
+            .flatMapIterable { it }
 }
 
 private fun Channel.toLink(postId: Int) = "https://t.me/$url/$postId?embed=1&single=1"

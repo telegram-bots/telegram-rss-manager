@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: web
+  jackson:
+    deserialization:
+      FAIL_ON_UNKNOWN_PROPERTIES: false
+  rabbitmq:
+    url: ${RM_RABBIT_URL}
+  cloud:
+    stream:
+      bindings:
+        input:
+          destination: splitter.feed
+
+server:
+  port: 8691
+
+logging:
+  root:
+    level: INFO

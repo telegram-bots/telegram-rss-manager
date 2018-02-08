@@ -31,7 +31,7 @@ class SubscriptionRepository:
         """
         return db.session \
             .execute(
-                text("""INSERT INTO subscriptions (user_id, channel_id) VALUES (:user_id, :channel_id)"""),
+                text("""INSERT INTO subscriptions (user_id, channel_id, name) VALUES (:user_id, :channel_id, 'main')"""),
                 {'user_id': user_id, 'channel_id': channel_id}
             ) \
             .rowcount > 0

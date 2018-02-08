@@ -1,34 +1,60 @@
 plugins {
-    id "org.jetbrains.kotlin.jvm" version "1.2.20"
-    id "application"
-    id "com.github.johnrengelman.shadow" version "2.0.2" apply false
+    id "org.jetbrains.kotlin.jvm" version "1.2.21"
+    id "org.jetbrains.kotlin.kapt" version "1.2.21"
+    id "org.jetbrains.kotlin.plugin.spring" version "1.2.21"
+    id "org.jetbrains.kotlin.plugin.noarg" version "1.2.21"
+    id "org.springframework.boot" version "1.5.9.RELEASE"
+    id "io.spring.dependency-management" version "1.0.4.RELEASE"
 }
 
-applicationName = "web"
-mainClassName = "com.github.telegram_bots.rss_manager.web.WebApplication"
 group "com.github.telegram_bots.rss_manager.web"
 version "0.0.1"
-
-apply plugin: 'com.github.johnrengelman.shadow'
 
 repositories {
     mavenLocal()
     jcenter()
 }
 
+noArg {
+    annotation("org.springframework.boot.context.properties.ConfigurationProperties")
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:Dalston.SR4"
+    }
+}
+
 dependencies {
-    // Commons
-    compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.20")
+    compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.2.21")
+    compile("org.jetbrains.kotlin:kotlin-reflect:1.2.21")
 
     // Web
-    compile("io.netty:netty-handler:4.1.19.Final")
-    compile("io.netty:netty-codec-http:4.1.19.Final")
+    compile("org.springframework.boot:spring-boot-starter-web")
+
+    // RSS
+    compile("com.rometools:rome:1.9.0")
+
+    // Rabbit
+    compile("org.springframework.cloud:spring-cloud-starter-stream-rabbit")
+
+    // Jackson
+    compile("com.fasterxml.jackson.module:jackson-module-kotlin:2.9.2")
+
+    // Rx
+    compile("io.reactivex.rxjava2:rxjava:2.1.9")
+    compile("io.reactivex.rxjava2:rxkotlin:2.2.0")
 
     // Logger
     compile("io.github.microutils:kotlin-logging:1.4.9")
-    compile("ch.qos.logback:logback-classic:1.2.3")
 
+//    runtime("org.springframework.boot:spring-boot-devtools")
+
+    kapt("org.springframework.boot:spring-boot-configuration-processor")
+    compileOnly("org.springframework.boot:spring-boot-configuration-processor")
+
+    testCompile("org.springframework.boot:spring-boot-starter-test")
     testCompile("io.kotlintest:kotlintest:2.0.7")
 }
 
-task wrapper(type: Wrapper) { gradleVersion = "4.4.1" }
+task wrapper(type: Wrapper) { gradleVersion = "4.5.1" }

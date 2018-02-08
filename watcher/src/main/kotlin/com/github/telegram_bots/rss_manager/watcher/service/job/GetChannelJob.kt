@@ -15,7 +15,7 @@ open class GetChannelJob(
     override fun call(): Maybe<Channel> = Maybe
         .defer {
             val channel = transaction.execute {
-                repository.firstNonUpdated()?.also { repository.update(it.copy(inWork = true, gracefulStop = false)) }
+                repository.firstNonUpdated()?.also { repository.lock(it) }
             }
 
             channel.toMaybe()
