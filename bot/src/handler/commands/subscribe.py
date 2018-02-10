@@ -13,6 +13,6 @@ class Subscribe(Base):
 
         try:
             channel = subscriptions.subscribe(command)
-            self.reply(command, f"Successfully subscribed to {channel.name} (@{channel.url})")
+            self.reply(command, f"Successfully subscribed to {channel.name} (@{channel.url}).\nYour feed url is https://feed.f0w.org/{command.chat_id}/main")
         except GenericSubscriptionError as e:
             self.reply(command, str(e))
