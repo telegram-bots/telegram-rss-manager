@@ -7,7 +7,7 @@ import io.reactivex.BackpressureStrategy
 import io.reactivex.Emitter
 import io.reactivex.Flowable
 import mu.KLogging
-import org.springframework.amqp.rabbit.connection.ConnectionFactory
+import org.springframework.amqp.AmqpIOException
 import org.springframework.amqp.rabbit.core.RabbitTemplate
 import org.springframework.cloud.stream.annotation.EnableBinding
 import org.springframework.stereotype.Service
@@ -36,6 +36,10 @@ class DynamicSink(
 //                            channel.basicConsume(queue,false, consumer)
                         }
                     }
+                } catch (e: AmqpIOException) {
+                    if ("NOT_FOUND" !in (e.cause?.cause?.message ?: "")) {
+                        throw e
+                    }
                 } finally {
                     emitter.onComplete()
                 }
@@ -43,12 +47,8 @@ class DynamicSink(
             BackpressureStrategy.BUFFER
     )
 
-    fun acknowledge(tag: Long) {
-        rabbitClient.execute { channel -> channel.basicAck(tag, true) }
-    }
-
-    fun unacknowledge(tag: Long) {
-        rabbitClient.execute { channel -> channel.basicNack(tag, true, true) }
+    fun unacknowledge(lastTag: Long) {
+        rabbitClient.execute { channel -> channel.basicNack(lastTag, true, true) }
     }
 
     class FlowableConsumer(private val emitter: Emitter<Message>, channel: Channel) : DefaultConsumer(channel) {

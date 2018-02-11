@@ -12,7 +12,8 @@ version "0.0.1"
 
 repositories {
     mavenLocal()
-    jcenter()
+//    jcenter()
+    mavenCentral()
 }
 
 noArg {

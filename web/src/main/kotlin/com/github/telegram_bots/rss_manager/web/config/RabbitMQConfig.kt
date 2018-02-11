@@ -1,8 +1,5 @@
 package com.github.telegram_bots.rss_manager.web.config
 
-import org.springframework.amqp.core.AmqpAdmin
-import org.springframework.amqp.rabbit.connection.ConnectionFactory
-import org.springframework.amqp.rabbit.core.RabbitAdmin
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -27,7 +24,4 @@ class RabbitMQConfig {
             virtualHost = uri.path
         }
     }
-
-    @Bean
-    fun ampqAdmin(connection: ConnectionFactory): AmqpAdmin = RabbitAdmin(connection)
 }
