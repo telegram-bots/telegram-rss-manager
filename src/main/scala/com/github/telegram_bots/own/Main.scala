@@ -21,17 +21,17 @@ object Main extends App {
   time {
     val proxies = mutable.Queue(getProxies: _*)
 
-//    val channels = List(
-//      "by_cotique",
-//      "vlast_zh",
-//      "clickordie"
-//    )
-//
-//    for (channel <- channels) {
-//      channelParser ! Start(channel, 1, proxy = proxies.dequeue())
-//    }
+    val channels = List(
+      "by_cotique",
+      "vlast_zh",
+      "clickordie"
+    )
 
-    channelParser ! Start("by_cotique", 2800, proxy = proxies.dequeue())
+    for (channel <- channels) {
+      channelParser ! Start(channel, 1, proxy = proxies.dequeue())
+    }
+
+//    channelParser ! Start("by_cotique", 2800, proxy = proxies.dequeue())
 
     Await.result(system.whenTerminated, 10 minutes)
   }

@@ -1,11 +1,11 @@
 package com.github.telegram_bots.own.actor
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.pattern.{ask, pipe}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
-import com.github.telegram_bots.own.actor.ChannelParser.{SendProcessRequest, _}
+import com.github.telegram_bots.own.actor.ChannelParser.{SendProcessRequest, props, _}
 import com.github.telegram_bots.own.actor.PostParser.Parse
 import com.github.telegram_bots.own.domain.Types._
 import com.github.telegram_bots.own.domain.{EmptyPost, Post, PresentPost}
@@ -19,9 +19,11 @@ import scala.concurrent.duration._
 class ChannelParser extends Actor with ActorLogging {
   val postParser: ActorRef = context.actorOf(PostParser.props)
   val postStorage: mutable.Map[String, ListBuffer[Post]] = mutable.Map[String, ListBuffer[Post]]()
-  implicit val materializer: Materializer = ActorMaterializer()
-  implicit val executionContext: ExecutionContext = context.system.dispatcher
+
+  implicit val system: ActorSystem = context.system
+  implicit val executionContext: ExecutionContext = system.dispatchers.lookup(props.dispatcher)
   implicit val timeout: Timeout = Timeout(5.seconds)
+  implicit val materializer: Materializer = ActorMaterializer()
 
   override def receive: Receive = {
     case action: Start => start(action)
@@ -40,14 +42,13 @@ class ChannelParser extends Actor with ActorLogging {
   private def sendRequest(request: SendProcessRequest): Unit = {
     val SendProcessRequest(url, startingPostId, lastPostId, proxy) = request
 
-    val batchFuture = Source(lastPostId until lastPostId + BATCH_SIZE)
-      .mapAsyncUnordered(BATCH_SIZE) { postId => postParser ? Parse(url, startingPostId, postId, proxy) }
+    val batchResponse = Source(lastPostId until lastPostId + BATCH_SIZE)
+      .mapAsyncUnordered(BATCH_SIZE) { postId => postParser ? Parse(url, postId, proxy) }
       .map(_.asInstanceOf[Post])
       .runWith(Sink.collection)
-
-    batchFuture
       .map { posts => ReceiveProcessResponse(url, startingPostId, posts, proxy) }
-      .pipeTo(self)
+
+    pipe(batchResponse) to self
   }
 
   private def receiveResponse(response: ReceiveProcessResponse): Unit = {

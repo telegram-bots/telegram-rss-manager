@@ -12,6 +12,7 @@ import akka.stream._
 import akka.stream.scaladsl.{Sink, Source}
 import com.github.telegram_bots.own.actor.ProxyRetriever._
 import com.github.telegram_bots.own.domain.Types._
+import com.github.telegram_bots.own.Implicits._
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, TimeoutException}
@@ -50,7 +51,7 @@ class ProxyRetriever extends Actor with ActorLogging {
   }
 
   private def transform(response: HttpResponse): Source[Proxy, NotUsed] =
-    Source.fromFuture(getBody(response))
+    Source.fromFuture(response.getBody)
       .mapConcat(_.split(System.lineSeparator()).toList)
       .map(line => {
         val Array(host, port) = line.split(":")
@@ -65,13 +66,11 @@ class ProxyRetriever extends Actor with ActorLogging {
     val request = Http().singleRequest(HttpRequest(uri = CHECK_URL), settings = settings)
     val response = request
       .recover { case _ => HttpResponse(status = StatusCodes.Forbidden) }
-      .flatMap(response => Future(response.status).zip(getBody(response)))
+      .flatMap(response => Future(response.status).zip(response.getBody))
       .map { case (statusCode, body) => statusCode.isSuccess() && CHECK_CONDITION(body) }
 
     Future(proxy).zip(response)
   }
-
-  private def getBody(response: HttpResponse) = response.entity.dataBytes.runWith(Sink.head).map(_.utf8String)
 }
 
 object ProxyRetriever {
