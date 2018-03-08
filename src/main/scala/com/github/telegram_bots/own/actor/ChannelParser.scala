@@ -1,16 +1,27 @@
 package com.github.telegram_bots.own.actor
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import akka.pattern.{ask, pipe}
+import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.{ActorMaterializer, Materializer}
+import akka.util.Timeout
 import com.github.telegram_bots.own.actor.ChannelParser.{SendProcessRequest, _}
 import com.github.telegram_bots.own.actor.PostParser.Parse
-import com.github.telegram_bots.own.component.PostStorage
-import com.github.telegram_bots.own.domain.Post
 import com.github.telegram_bots.own.domain.Types._
+import com.github.telegram_bots.own.domain.{EmptyPost, Post, PresentPost}
+
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 
 class ChannelParser extends Actor with ActorLogging {
   val postParser: ActorRef = context.actorOf(PostParser.props)
-  val storage: PostStorage = new PostStorage
+  val postStorage: mutable.Map[String, ListBuffer[Post]] = mutable.Map[String, ListBuffer[Post]]()
+  implicit val materializer: Materializer = ActorMaterializer()
+  implicit val executionContext: ExecutionContext = context.system.dispatcher
+  implicit val timeout: Timeout = Timeout(5.seconds)
 
   override def receive: Receive = {
     case action: Start => start(action)
@@ -29,32 +40,34 @@ class ChannelParser extends Actor with ActorLogging {
   private def sendRequest(request: SendProcessRequest): Unit = {
     val SendProcessRequest(url, startingPostId, lastPostId, proxy) = request
 
-    for (postId <- lastPostId until lastPostId + BATCH_SIZE) {
-      val batchId = getBatchId(startingPostId, postId)
-      postParser ! Parse(url, startingPostId, batchId, postId, proxy)
-    }
+    val batchFuture = Source(lastPostId until lastPostId + BATCH_SIZE)
+      .mapAsyncUnordered(BATCH_SIZE) { postId => postParser ? Parse(url, startingPostId, postId, proxy) }
+      .map(_.asInstanceOf[Post])
+      .runWith(Sink.collection)
+
+    batchFuture
+      .map { posts => ReceiveProcessResponse(url, startingPostId, posts, proxy) }
+      .pipeTo(self)
   }
 
   private def receiveResponse(response: ReceiveProcessResponse): Unit = {
-    val ReceiveProcessResponse(startingPostId, batchId, post, proxy) = response
-    val url = post.channelLink
+    val ReceiveProcessResponse(url, startingPostId, posts, proxy) = response
 
-    storage.append(batchId, post)
+    postStorage.getOrElseUpdate(url, ListBuffer()) ++= posts
 
-    val postCount = storage.count(url)
+    lazy val totalPostCount = postStorage(url).size
+    lazy val emptyPostInBatchCount = posts.count(_.isInstanceOf[EmptyPost])
 
-    if (postCount == MAX_SIZE) {
-      self ! Complete(url, startingPostId, storage.getAndRemove(url))
-    } else if (postCount % BATCH_SIZE == 0) {
-      val emptyPostCount = storage.countEmpty(url, batchId)
+    if (totalPostCount == MAX_SIZE || emptyPostInBatchCount == BATCH_SIZE) {
+      val posts = postStorage(url).filter(_.isInstanceOf[PresentPost]).sortBy(_.id)
 
-      if (emptyPostCount == BATCH_SIZE) {
-        self ! Complete(url, startingPostId, storage.getAndRemove(url))
-      } else {
-        val lastPostId = batchId * BATCH_SIZE + response.startingPostId
+      postStorage -= url
 
-        self ! SendProcessRequest(url, startingPostId, lastPostId, proxy)
-      }
+      self ! Complete(url, startingPostId, posts)
+    } else {
+      val nextBatchStartingId = posts.maxBy(_.id).id + 1
+
+      self ! SendProcessRequest(url, startingPostId, nextBatchStartingId, proxy)
     }
   }
 
@@ -62,18 +75,8 @@ class ChannelParser extends Actor with ActorLogging {
     val Complete(url, startingPostId, posts) = action
     val lastPostId = posts.lastOption.map(_.id.toString).getOrElse("-")
 
-    log.info(s"Complete parsing: $url [$startingPostId..$lastPostId] (${posts.size} not empty) posts")
-    log.debug(s"Content: ${posts.map(_.id)}")
-  }
-
-  private def getBatchId(startingPostId: PostID, postId: PostID): Int = {
-    val id = for {
-      startRange <- startingPostId until startingPostId + MAX_SIZE by BATCH_SIZE
-      id <- startRange until startRange + BATCH_SIZE
-      if id == postId
-    } yield ((startRange / BATCH_SIZE) % (MAX_SIZE / BATCH_SIZE)) + 1
-
-    id.headOption.getOrElse(throw new IllegalArgumentException(s"$postId"))
+    log.info(s"Complete parsing: $url [$startingPostId..$lastPostId] (${posts.size} not empty)")
+    log.debug(s"Empty posts: ${(startingPostId until startingPostId + MAX_SIZE).diff(posts.map(_.id))}")
   }
 }
 
@@ -87,7 +90,7 @@ object ChannelParser {
 
   case class SendProcessRequest(url: ChannelURL, startingPostId: PostID, lastPostId: PostID, proxy: Proxy)
 
-  case class ReceiveProcessResponse(startingPostId: PostID, batchId: BatchID, post: Post, proxy: Proxy)
+  case class ReceiveProcessResponse(url: ChannelURL, startingPostId: PostID, posts: Seq[Post], proxy: Proxy)
 
-  case class Complete(url: ChannelURL, startingPostId: PostID, posts: List[Post])
+  case class Complete(url: ChannelURL, startingPostId: PostID, posts: Seq[Post])
 }

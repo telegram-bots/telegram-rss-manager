@@ -4,12 +4,11 @@ import java.time.ZoneId
 
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.routing.SmallestMailboxPool
-import com.github.telegram_bots.own.actor.ChannelParser.ReceiveProcessResponse
 import com.github.telegram_bots.own.actor.PostParser.Parse
 import com.github.telegram_bots.own.component.PostDataExtractor._
 import com.github.telegram_bots.own.component.PostDownloader._
-import com.github.telegram_bots.own.domain._
 import com.github.telegram_bots.own.domain.Types._
+import com.github.telegram_bots.own.domain._
 import org.jsoup.nodes.Document
 
 import scala.language.postfixOps
@@ -17,16 +16,16 @@ import scala.util.{Failure, Success}
 
 class PostParser extends Actor with ActorLogging {
   def receive: Receive = {
-    case Parse(url, startingPostId, batchId, postId, proxy) =>
+    case Parse(url, startingPostId, postId, proxy) =>
       val result = download(url, postId, proxy).map(parse(url, postId)(_))
 
       result match {
         case Success(post) =>
-          log.debug(s"Parsed post: $url [$batchId:$postId] $post")
-          sender ! ReceiveProcessResponse(startingPostId, batchId, post, proxy)
+          log.debug(s"Parsed post: $url [$postId] $post")
+          sender ! post
         case Failure(e) =>
           log.warning(s"Failed to parse ${e.getMessage}, retrying...")
-          self ! Parse(url, startingPostId, postId, batchId, proxy)
+          self ! Parse(url, startingPostId, postId, proxy)
       }
   }
 
@@ -51,5 +50,5 @@ class PostParser extends Actor with ActorLogging {
 object PostParser {
   def props: Props = Props[PostParser].withDispatcher("postDispatcher").withRouter(new SmallestMailboxPool(25))
 
-  case class Parse(url: ChannelURL, startingPostId: PostID, postId: PostID, batchId: BatchID, proxy: Proxy)
+  case class Parse(url: ChannelURL, startingPostId: PostID, postId: PostID, proxy: Proxy)
 }
