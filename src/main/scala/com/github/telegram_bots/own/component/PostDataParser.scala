@@ -8,33 +8,24 @@ import org.jsoup.nodes.Document
 
 import scala.collection.JavaConverters._
 
-object PostDataExtractor {
-  def getType(doc: Document): PostType = doc match {
-    case d if !d.select("#sticker_image").isEmpty => STICKER
-    case d if !d.select(".tgme_widget_message_photo").isEmpty => IMAGE
-    case d if !d.select(".tgme_widget_message_location").isEmpty => GEO
-    case d if !d.select(".tgme_widget_message_document_icon").isEmpty => FILE
-    case d if !d.select(".tgme_widget_message_contact").isEmpty => CONTACT
-    case d if !d.select(".tgme_widget_message_document_icon.audio, audio.tgme_widget_message_voice").isEmpty => AUDIO
-    case d if !d.select("video.tgme_widget_message_video, video.tgme_widget_message_roundvideo").isEmpty => VIDEO
-    case _ => TEXT
-  }
+class PostDataParser(doc: Document) {
+  lazy val parseType: PostType = parseTypeLazy
 
-  def getText(doc: Document, `type`: PostType): String = `type` match {
+  def parseContent: String = parseType match {
     case GEO => doc.select(".tgme_widget_message_location_info").asScala.lastOption.map(_.html).getOrElse("")
     case CONTACT => doc.select(".tgme_widget_message_contact").asScala.lastOption.map(_.html).getOrElse("")
     case _ => doc.select(".tgme_widget_message_text").asScala.lastOption.map(_.html).getOrElse("")
   }
 
-  def getName(doc: Document): String = doc.select(".tgme_widget_message_owner_name").asScala
+  def parseChannelName: String = doc.select(".tgme_widget_message_owner_name").asScala
     .lastOption
     .flatMap(_.select("span").asScala.lastOption.map(_.text))
     .get
 
-  def getAuthor(doc: Document): Option[String] = (doc.select(".tgme_widget_message_from_author").text()?)
+  def parseAuthor: Option[String] = (doc.select(".tgme_widget_message_from_author").text()?)
     .flatMap(_.optionIfBlank)
 
-  def getDate(doc: Document): LocalDateTime = doc.getElementsByTag("time").asScala
+  def parseDate: LocalDateTime = doc.getElementsByTag("time").asScala
     .lastOption
     .map(_.attr("datetime"))
     .map(_.split("\\+"))
@@ -42,7 +33,7 @@ object PostDataExtractor {
     .map(LocalDateTime.parse(_))
     .get
 
-  def getFileURL(doc: Document, `type`: PostType): Option[String] = `type` match {
+  def parseFileURL: Option[String] = parseType match {
     case GEO => doc.select(".tgme_widget_message_location").asScala
       .headOption
       .map(_.attr("style"))
@@ -68,5 +59,16 @@ object PostDataExtractor {
       .attr("src")
       .optionIfBlank
     case _ => Option.empty
+  }
+
+  private def parseTypeLazy: PostType = doc match {
+    case d if !d.select("#sticker_image").isEmpty => STICKER
+    case d if !d.select(".tgme_widget_message_photo").isEmpty => IMAGE
+    case d if !d.select(".tgme_widget_message_location").isEmpty => GEO
+    case d if !d.select(".tgme_widget_message_document_icon").isEmpty => FILE
+    case d if !d.select(".tgme_widget_message_contact").isEmpty => CONTACT
+    case d if !d.select(".tgme_widget_message_document_icon.audio, audio.tgme_widget_message_voice").isEmpty => AUDIO
+    case d if !d.select("video.tgme_widget_message_video, video.tgme_widget_message_roundvideo").isEmpty => VIDEO
+    case _ => TEXT
   }
 }

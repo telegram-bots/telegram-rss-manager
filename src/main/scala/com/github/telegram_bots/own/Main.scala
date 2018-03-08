@@ -15,23 +15,25 @@ import scala.language.postfixOps
 
 object Main extends App {
   val system = ActorSystem("parser")
-  val proxyRetriever = system.actorOf(ProxyRetriever.props)
-  val channelParser = system.actorOf(ChannelParser.props)
+  val proxyRetriever = system.actorOf(ProxyRetriever.props(25))
+  val channelParser = system.actorOf(ChannelParser.props(5, 50))
 
   time {
     val proxies = mutable.Queue(getProxies: _*)
 
     val channels = List(
-      "by_cotique",
-      "vlast_zh",
-      "clickordie"
+      ("by_cotique", 1),
+      ("vlast_zh", 1),
+      ("clickordie", 1),
+      ("dvachannel", 1),
+      ("dev_rb", 1),
+      ("mudrosti", 1),
+      ("neuralmachine", 1)
     )
 
-    for (channel <- channels) {
-      channelParser ! Start(channel, 1, proxy = proxies.dequeue())
+    for ((channel, postId) <- channels) {
+      channelParser ! Start(channel, postId, proxy = proxies.dequeue())
     }
-
-//    channelParser ! Start("by_cotique", 2800, proxy = proxies.dequeue())
 
     Await.result(system.whenTerminated, 10 minutes)
   }

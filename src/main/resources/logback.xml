@@ -8,6 +8,7 @@
     </appender>
 
     <logger name="akka" level="INFO" />
+    <logger name="akka.stream" level="INFO" />
     <logger name="com.github.telegram_bots" level="DEBUG" />
 
     <root level="INFO">

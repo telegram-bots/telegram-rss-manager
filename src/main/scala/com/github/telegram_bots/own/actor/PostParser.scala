@@ -4,6 +4,8 @@ import java.net.InetSocketAddress
 import java.time.ZoneId
 
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.event.Logging
+import akka.event.Logging.Debug
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpHeader, HttpRequest}
 import akka.http.scaladsl.settings.ConnectionPoolSettings
@@ -11,11 +13,11 @@ import akka.http.scaladsl.{ClientTransport, Http}
 import akka.pattern.{ask, pipe}
 import akka.routing.SmallestMailboxPool
 import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.{ActorAttributes, ActorMaterializer, Materializer}
 import akka.util.Timeout
 import com.github.telegram_bots.own.Implicits._
-import com.github.telegram_bots.own.actor.PostParser.{Parse, props}
-import com.github.telegram_bots.own.component.PostDataExtractor._
+import com.github.telegram_bots.own.actor.PostParser.{Parse, dispatcher, props}
+import com.github.telegram_bots.own.component.PostDataParser
 import com.github.telegram_bots.own.domain.Types._
 import com.github.telegram_bots.own.domain._
 import org.jsoup.Jsoup
@@ -31,7 +33,7 @@ class PostParser extends Actor with ActorLogging {
 
   implicit val system: ActorSystem = context.system
   implicit val materializer: Materializer = ActorMaterializer()
-  implicit val executionContext: ExecutionContext = system.dispatchers.lookup(props.dispatcher)
+  implicit val executionContext: ExecutionContext = system.dispatchers.lookup(dispatcher)
   implicit val timeout: Timeout = Timeout(5.seconds)
 
   def receive: Receive = {
@@ -39,11 +41,12 @@ class PostParser extends Actor with ActorLogging {
       val post = Source.fromFuture(download(url, postId, proxy))
         .mapAsyncUnordered(1)(checkResponse)
         .map(parse(url, postId)(_))
-        .log("parsed-post", post => log.debug(s"Parsed post: $url [$postId] $post"))
+        .log("parsed-post", post => s"$url [$postId] $post")(log)
         .recover { case e =>
           log.warning(s"Failed to parse ${e.getMessage}, retrying...")
           self ? Parse(url, postId, proxy)
         }
+        .withAttributes(ActorAttributes.dispatcher(dispatcher))
         .runWith(Sink.head)
 
       pipe(post) to sender
@@ -72,17 +75,17 @@ class PostParser extends Actor with ActorLogging {
 
   private def parse(url: ChannelURL, postId: PostID)(document: Option[Document]): Post = document match {
     case Some(message) =>
-      val `type` = getType(message)
+      val parser = new PostDataParser(message)
 
       PresentPost(
         id = postId,
-        `type` = `type`,
-        content = getText(message, `type`),
-        date = getDate(message).atZone(ZoneId.systemDefault()).toEpochSecond,
-        author = getAuthor(message),
+        `type` = parser.parseType,
+        content = parser.parseContent,
+        date = parser.parseDate.atZone(ZoneId.systemDefault()).toEpochSecond,
+        author = parser.parseAuthor,
         channelLink = url,
-        channelName = getName(message),
-        fileURL = getFileURL(message, `type`)
+        channelName = parser.parseChannelName,
+        fileURL = parser.parseFileURL
       )
     case _ => EmptyPost(id = postId, channelLink = url)
   }
@@ -103,7 +106,9 @@ class PostParser extends Actor with ActorLogging {
 }
 
 object PostParser {
-  def props: Props = Props[PostParser].withDispatcher("postDispatcher").withRouter(new SmallestMailboxPool(25))
+  def dispatcher = "postDispatcher"
+
+  def props: Props = Props[PostParser].withDispatcher(dispatcher).withRouter(new SmallestMailboxPool(25))
 
   case class Parse(url: ChannelURL, postId: PostID, proxy: Proxy)
 }

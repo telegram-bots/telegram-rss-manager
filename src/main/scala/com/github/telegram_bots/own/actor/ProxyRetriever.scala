@@ -18,7 +18,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, TimeoutException}
 import scala.util.{Failure, Success}
 
-class ProxyRetriever extends Actor with ActorLogging {
+class ProxyRetriever(downloadSize: Int) extends Actor with ActorLogging {
   implicit val system: ActorSystem = context.system
   implicit val materializer: Materializer = ActorMaterializer()
   implicit val executionContext: ExecutionContext = system.dispatcher
@@ -28,16 +28,17 @@ class ProxyRetriever extends Actor with ActorLogging {
   }
 
   private def getProxies: Future[Seq[Proxy]] = {
-    val request = Http().singleRequest(HttpRequest(uri = PARSE_URL))
+    val uri = s"http://pubproxy.com/api/proxy?format=txt&type=http&limit=$downloadSize&level=anonymous&https=true&user_agent=true"
+    val request = Http().singleRequest(HttpRequest(uri = uri))
 
     val future = Source.fromFuture(request)
       .flatMapConcat(transform)
-      .log("downloaded", { proxy => log.debug(s"Downloaded: $proxy") })
-      .mapAsyncUnordered(DOWNLOAD_SIZE)(isWorking)
+      .log("downloaded")(log)
+      .mapAsyncUnordered(downloadSize)(isWorking)
       .recover { case _: TimeoutException => (Proxy.EMPTY, false) }
       .filter(_._2)
       .map(_._1)
-      .log("checked", { proxy => log.debug(s"Left after check: $proxy") })
+      .log("checked")(log)
       .runWith(Sink.collection)
 
     future.onComplete {
@@ -74,11 +75,7 @@ class ProxyRetriever extends Actor with ActorLogging {
 }
 
 object ProxyRetriever {
-  def props: Props = Props[ProxyRetriever]
-
-  val DOWNLOAD_SIZE = 25
-
-  val PARSE_URL = s"http://pubproxy.com/api/proxy?format=txt&type=http&limit=$DOWNLOAD_SIZE&level=anonymous&https=true&user_agent=true"
+  def props(downloadSize: Int): Props = Props(new ProxyRetriever(downloadSize))
 
   val CHECK_URL = "https://t.me/by_cotique/6"
 

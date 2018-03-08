@@ -3,9 +3,9 @@ package com.github.telegram_bots.own.actor
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.pattern.{ask, pipe}
 import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.{ActorAttributes, ActorMaterializer, Materializer}
 import akka.util.Timeout
-import com.github.telegram_bots.own.actor.ChannelParser.{SendProcessRequest, props, _}
+import com.github.telegram_bots.own.actor.ChannelParser.{SendProcessRequest, _}
 import com.github.telegram_bots.own.actor.PostParser.Parse
 import com.github.telegram_bots.own.domain.Types._
 import com.github.telegram_bots.own.domain.{EmptyPost, Post, PresentPost}
@@ -16,12 +16,12 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 
-class ChannelParser extends Actor with ActorLogging {
+class ChannelParser(batchSize: Int, totalSize: Int) extends Actor with ActorLogging {
   val postParser: ActorRef = context.actorOf(PostParser.props)
   val postStorage: mutable.Map[String, ListBuffer[Post]] = mutable.Map[String, ListBuffer[Post]]()
 
   implicit val system: ActorSystem = context.system
-  implicit val executionContext: ExecutionContext = system.dispatchers.lookup(props.dispatcher)
+  implicit val executionContext: ExecutionContext = system.dispatchers.lookup(dispatcher)
   implicit val timeout: Timeout = Timeout(5.seconds)
   implicit val materializer: Materializer = ActorMaterializer()
 
@@ -35,16 +35,17 @@ class ChannelParser extends Actor with ActorLogging {
   private def start(action: Start): Unit = {
     val Start(url, startingPostId, proxy) = action
 
-    log.info(s"Start parsing: $url [$startingPostId..${startingPostId + MAX_SIZE - 1}] $proxy")
+    log.info(s"Start parsing: $url [$startingPostId..${startingPostId + totalSize - 1}] $proxy")
     self ! SendProcessRequest(url, startingPostId, startingPostId, proxy)
   }
 
   private def sendRequest(request: SendProcessRequest): Unit = {
     val SendProcessRequest(url, startingPostId, lastPostId, proxy) = request
 
-    val batchResponse = Source(lastPostId until lastPostId + BATCH_SIZE)
-      .mapAsyncUnordered(BATCH_SIZE) { postId => postParser ? Parse(url, postId, proxy) }
+    val batchResponse = Source(lastPostId until lastPostId + batchSize)
+      .mapAsyncUnordered(batchSize) { postId => postParser ? Parse(url, postId, proxy) }
       .map(_.asInstanceOf[Post])
+      .withAttributes(ActorAttributes.dispatcher(dispatcher))
       .runWith(Sink.collection)
       .map { posts => ReceiveProcessResponse(url, startingPostId, posts, proxy) }
 
@@ -59,7 +60,7 @@ class ChannelParser extends Actor with ActorLogging {
     lazy val totalPostCount = postStorage(url).size
     lazy val emptyPostInBatchCount = posts.count(_.isInstanceOf[EmptyPost])
 
-    if (totalPostCount == MAX_SIZE || emptyPostInBatchCount == BATCH_SIZE) {
+    if (totalPostCount == totalSize || emptyPostInBatchCount == batchSize) {
       val posts = postStorage(url).filter(_.isInstanceOf[PresentPost]).sortBy(_.id)
 
       postStorage -= url
@@ -77,15 +78,15 @@ class ChannelParser extends Actor with ActorLogging {
     val lastPostId = posts.lastOption.map(_.id.toString).getOrElse("-")
 
     log.info(s"Complete parsing: $url [$startingPostId..$lastPostId] (${posts.size} not empty)")
-    log.debug(s"Empty posts: ${(startingPostId until startingPostId + MAX_SIZE).diff(posts.map(_.id))}")
+    log.debug(s"Empty posts: ${(startingPostId until startingPostId + totalSize).diff(posts.map(_.id))}")
   }
 }
 
 object ChannelParser {
-  def props: Props = Props[ChannelParser].withDispatcher("channelDispatcher")
+  def dispatcher = "channelDispatcher"
 
-  val BATCH_SIZE = 5
-  val MAX_SIZE = 50
+  def props(batchSize: Int, totalSize: Int): Props =
+    Props(new ChannelParser(batchSize, totalSize)).withDispatcher(dispatcher)
 
   case class Start(url: ChannelURL, startingPostId: PostID, proxy: Proxy)
 
