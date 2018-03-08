@@ -5,6 +5,12 @@ object Types {
 
   type Author = Option[String]
 
+  type ChannelURL = String
+
+  type BatchID = Int
+
+  type PostID = Int
+
   case class Proxy(host: String, port: Int)
 
   object Proxy {

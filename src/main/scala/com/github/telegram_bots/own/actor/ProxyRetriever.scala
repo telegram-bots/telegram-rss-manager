@@ -41,7 +41,7 @@ class ProxyRetriever extends Actor with ActorLogging {
 
     future.onComplete {
       case Success(proxies) =>
-        log.info(s"Successfully retrieved ${proxies.size} proxies")
+        log.info(s"Retrieved ${proxies.size} proxies")
         log.debug(s"Retrieved proxies: $proxies")
       case Failure(e) => log.error("Failed to retrieve proxies", e)
     }

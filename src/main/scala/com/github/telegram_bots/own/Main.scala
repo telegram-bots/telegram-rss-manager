@@ -28,8 +28,10 @@ object Main extends App {
     )
 
     for (channel <- channels) {
-      channelParser ! Start(channel, proxy = proxies.dequeue())
+      channelParser ! Start(channel, 1, proxy = proxies.dequeue())
     }
+
+//    channelParser ! Start("by_cotique", 2800, proxy = proxies.dequeue())
 
     Await.result(system.whenTerminated, 10 minutes)
   }

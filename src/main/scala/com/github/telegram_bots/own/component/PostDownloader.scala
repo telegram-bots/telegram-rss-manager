@@ -1,11 +1,11 @@
 package com.github.telegram_bots.own.component
 
+import com.github.telegram_bots.own.Implicits._
 import com.github.telegram_bots.own.domain.Types.Proxy
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import com.github.telegram_bots.own.Implicits._
-import scala.collection.JavaConverters._
 
+import scala.collection.JavaConverters._
 import scala.util.Try
 
 object PostDownloader {

@@ -2,9 +2,10 @@ package com.github.telegram_bots.own.component
 
 import java.time.LocalDateTime
 
+import com.github.telegram_bots.own.Implicits._
 import com.github.telegram_bots.own.domain.PostType._
 import org.jsoup.nodes.Document
-import com.github.telegram_bots.own.Implicits._
+
 import scala.collection.JavaConverters._
 
 object PostDataExtractor {
@@ -25,24 +26,9 @@ object PostDataExtractor {
     case _ => doc.select(".tgme_widget_message_text").asScala.lastOption.map(_.html).getOrElse("")
   }
 
-  def getId(doc: Document): Int = doc.select(".tgme_widget_message_date").asScala
+  def getName(doc: Document): String = doc.select(".tgme_widget_message_owner_name").asScala
     .lastOption
-    .map(_.attr("href"))
-    .map(_.split("/"))
-    .flatMap(_.lastOption)
-    .map(_.split("\\?"))
-    .flatMap(_.headOption)
-    .map(_.toInt)
-    .get
-
-  def getURLAndName(doc: Document): (String, String) = doc.select(".tgme_widget_message_owner_name").asScala
-    .lastOption
-    .map(it => {
-      val name = it.select("span").asScala.lastOption.map(_.text).get
-      val url = it.attr("href").split("/").lastOption.get
-
-      (url, name)
-    })
+    .flatMap(_.select("span").asScala.lastOption.map(_.text))
     .get
 
   def getAuthor(doc: Document): Option[String] = (doc.select(".tgme_widget_message_from_author").text()?)

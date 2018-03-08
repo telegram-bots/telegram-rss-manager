@@ -8,8 +8,8 @@ import com.github.telegram_bots.own.actor.ChannelParser.ReceiveProcessResponse
 import com.github.telegram_bots.own.actor.PostParser.Parse
 import com.github.telegram_bots.own.component.PostDataExtractor._
 import com.github.telegram_bots.own.component.PostDownloader._
+import com.github.telegram_bots.own.domain._
 import com.github.telegram_bots.own.domain.Types._
-import com.github.telegram_bots.own.domain.{Post, ProcessedPost}
 import org.jsoup.nodes.Document
 
 import scala.language.postfixOps
@@ -17,36 +17,39 @@ import scala.util.{Failure, Success}
 
 class PostParser extends Actor with ActorLogging {
   def receive: Receive = {
-    case Parse(channelUrl, startingPostId, postId, batchId, proxy) =>
-      val result = download(channelUrl, postId, proxy).map(_.map(parse))
+    case Parse(url, startingPostId, batchId, postId, proxy) =>
+      val result = download(url, postId, proxy).map(parse(url, postId)(_))
 
       result match {
         case Success(post) =>
-          sender ! ReceiveProcessResponse(channelUrl, startingPostId, ProcessedPost(channelUrl, batchId, postId, post), proxy)
+          log.debug(s"Parsed post: $url [$batchId:$postId] $post")
+          sender ! ReceiveProcessResponse(startingPostId, batchId, post, proxy)
         case Failure(e) =>
-          self ! Parse(channelUrl, startingPostId, postId, batchId, proxy)
+          log.warning(s"Failed to parse ${e.getMessage}, retrying...")
+          self ! Parse(url, startingPostId, postId, batchId, proxy)
       }
   }
 
-  private def parse(message: Document): Post = {
-    val `type` = getType(message)
-    val (url, name) = getURLAndName(message)
+  private def parse(url: ChannelURL, postId: PostID)(document: Option[Document]): Post = document match {
+    case Some(message) =>
+      val `type` = getType(message)
 
-    Post(
-      id = getId(message),
-      `type` = `type`,
-      content = getText(message, `type`),
-      date = getDate(message).atZone(ZoneId.systemDefault()).toEpochSecond,
-      author = getAuthor(message),
-      channelLink = url,
-      channelName = name,
-      fileURL = getFileURL(message, `type`)
-    )
+      PresentPost(
+        id = postId,
+        `type` = `type`,
+        content = getText(message, `type`),
+        date = getDate(message).atZone(ZoneId.systemDefault()).toEpochSecond,
+        author = getAuthor(message),
+        channelLink = url,
+        channelName = getName(message),
+        fileURL = getFileURL(message, `type`)
+      )
+    case _ => EmptyPost(id = postId, channelLink = url)
   }
 }
 
 object PostParser {
   def props: Props = Props[PostParser].withDispatcher("postDispatcher").withRouter(new SmallestMailboxPool(25))
 
-  case class Parse(channelUrl: String, startingPostId: Int, postId: Int, batchId: Int, proxy: Proxy)
+  case class Parse(url: ChannelURL, startingPostId: PostID, postId: PostID, batchId: BatchID, proxy: Proxy)
 }
