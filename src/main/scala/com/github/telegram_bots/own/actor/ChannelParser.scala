@@ -13,16 +13,14 @@ import com.github.telegram_bots.own.domain.{EmptyPost, Post, PresentPost}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
 
 
-class ChannelParser(batchSize: Int, totalSize: Int) extends Actor with ActorLogging {
+class ChannelParser(batchSize: Int, totalSize: Int)(implicit timeout: Timeout) extends Actor with ActorLogging {
   val postParser: ActorRef = context.actorOf(PostParser.props)
   val postStorage: mutable.Map[String, ListBuffer[Post]] = mutable.Map[String, ListBuffer[Post]]()
 
   implicit val system: ActorSystem = context.system
   implicit val executionContext: ExecutionContext = system.dispatchers.lookup(dispatcher)
-  implicit val timeout: Timeout = Timeout(5.seconds)
   implicit val materializer: Materializer = ActorMaterializer()
 
   override def receive: Receive = {
@@ -85,7 +83,7 @@ class ChannelParser(batchSize: Int, totalSize: Int) extends Actor with ActorLogg
 object ChannelParser {
   def dispatcher = "channelDispatcher"
 
-  def props(batchSize: Int, totalSize: Int): Props =
+  def props(batchSize: Int, totalSize: Int)(implicit timeout: Timeout): Props =
     Props(new ChannelParser(batchSize, totalSize)).withDispatcher(dispatcher)
 
   case class Start(url: ChannelURL, startingPostId: PostID, proxy: Proxy)
