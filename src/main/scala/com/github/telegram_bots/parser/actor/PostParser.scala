@@ -1,8 +1,9 @@
-package com.github.telegram_bots.own.actor
+package com.github.telegram_bots.parser.actor
 
 import java.net.InetSocketAddress
 import java.time.ZoneId
 
+import akka.NotUsed
 import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpHeader, HttpRequest}
@@ -10,13 +11,14 @@ import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.http.scaladsl.{ClientTransport, Http}
 import akka.pattern.{ask, pipe}
 import akka.routing.SmallestMailboxPool
+import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
-import com.github.telegram_bots.own.Implicits._
-import com.github.telegram_bots.own.actor.PostParser.{Parse, dispatcher}
-import com.github.telegram_bots.own.component.PostDataParser
-import com.github.telegram_bots.own.domain.Types._
-import com.github.telegram_bots.own.domain._
+import com.github.telegram_bots.parser.implicits._
+import com.github.telegram_bots.parser.actor.PostParser.{Parse, dispatcher}
+import com.github.telegram_bots.parser.component.PostDataParser
+import com.github.telegram_bots.parser.domain.Types._
+import com.github.telegram_bots.parser.domain._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -34,33 +36,38 @@ class PostParser()(implicit val timeout: Timeout) extends Actor with ActorLoggin
   def receive: Receive = {
     case Parse(url, postId, proxy) =>
       val post = download(url, postId, proxy)
-        .flatMap(checkResponse)
+        .flatMapConcat(checkResponse)
         .map(parse(url, postId)(_))
-        .doOnNext(post => log.debug(s"[parsed-post] Element: $url [$postId] $post"))
-        .doOnError(e => log.warning(s"Failed to parse ${e.getMessage}, retrying..."))
-        .recover { case _ => self ? Parse(url, postId, proxy)}
+        .log("parsed-post", post => s"$url [$postId] $post")
+        .recover { case e =>
+          log.warning(s"Failed to parse ${e.getMessage}, retrying...")
+          self ? Parse(url, postId, proxy)
+        }
+        .runWith(Sink.head)
 
       pipe(post) to sender
   }
 
-  private def download(url: ChannelURL, postId: PostID, proxy: Proxy): Future[Document] = {
-    val transport = ClientTransport.httpsProxy(InetSocketAddress.createUnresolved(proxy.host, proxy.port))
-    val settings = ConnectionPoolSettings(context.system).withTransport(transport)
+  private def download(url: ChannelURL, postId: PostID, proxy: Proxy): Source[Document, Future[NotUsed]] = {
+    val settings = ConnectionPoolSettings(context.system)
+      .withTransport(ClientTransport.httpsProxy(
+        InetSocketAddress.createUnresolved(proxy.host, proxy.port)
+      ))
     val request = HttpRequest(uri = s"https://t.me/$url/$postId?embed=1&single=1").withHeaders(headers)
 
-    Http().singleRequest(request, settings = settings)
+    Source.lazilyAsync { () => Http().singleRequest(request, settings = settings) }
       .map(_.decode)
-      .flatMap(_.getBody)
+      .flatMapConcat(_.getBody)
       .map(Jsoup.parse)
   }
 
-  private def checkResponse(doc: Document): Future[Option[Document]] = {
+  private def checkResponse(doc: Document): Source[Option[Document], NotUsed] = {
     val error = doc.select(".tgme_widget_message_error").text().trim()
 
     error match {
-      case e if e == "Post not found" => Future.successful(Option.empty)
-      case e if e.contains("Channel with username") => Future.failed(new RuntimeException(e))
-      case _ => Future.successful(Option(doc))
+      case e if e == "Post not found" => Source.single(Option.empty)
+      case e if e.contains("Channel with username") => Source.failed(new RuntimeException(e))
+      case _ => Source.single(Option(doc))
     }
   }
 

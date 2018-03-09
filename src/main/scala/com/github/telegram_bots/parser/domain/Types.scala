@@ -1,4 +1,4 @@
-package com.github.telegram_bots.own.domain
+package com.github.telegram_bots.parser.domain
 
 object Types {
   type FileURL = Option[String]

@@ -1,14 +1,14 @@
-package com.github.telegram_bots.own.actor
+package com.github.telegram_bots.parser.actor
 
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
 import akka.pattern.{ask, pipe}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorAttributes, ActorMaterializer, Materializer}
 import akka.util.Timeout
-import com.github.telegram_bots.own.actor.ChannelParser.{SendProcessRequest, _}
-import com.github.telegram_bots.own.actor.PostParser.Parse
-import com.github.telegram_bots.own.domain.Types._
-import com.github.telegram_bots.own.domain.{EmptyPost, Post, PresentPost}
+import com.github.telegram_bots.parser.actor.ChannelParser.{SendProcessRequest, _}
+import com.github.telegram_bots.parser.actor.PostParser.Parse
+import com.github.telegram_bots.parser.domain.Types._
+import com.github.telegram_bots.parser.domain.{EmptyPost, Post, PresentPost}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -44,8 +44,9 @@ class ChannelParser(batchSize: Int, totalSize: Int)(implicit timeout: Timeout) e
       .mapAsyncUnordered(batchSize) { postId => postParser ? Parse(url, postId, proxy) }
       .map(_.asInstanceOf[Post])
       .withAttributes(ActorAttributes.dispatcher(dispatcher))
-      .runWith(Sink.collection)
+      .grouped(batchSize)
       .map { posts => ReceiveProcessResponse(url, startingPostId, posts, proxy) }
+      .runWith(Sink.head)
 
     pipe(batchResponse) to self
   }
