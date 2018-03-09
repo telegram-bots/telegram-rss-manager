@@ -1,7 +1,7 @@
-package com.github.telegram_bots.parser.domain
+package com.github.telegram_bots.core.domain
 
-import com.github.telegram_bots.parser.domain.PostType.PostType
-import com.github.telegram_bots.parser.domain.Types.{Author, ChannelURL, FileURL, PostID}
+import com.github.telegram_bots.core.domain.PostType.PostType
+import com.github.telegram_bots.core.domain.types.{Author, ChannelURL, FileURL, PostID}
 
 abstract sealed class Post(
   val channelLink: ChannelURL,

@@ -1,9 +1,9 @@
-package com.github.telegram_bots.parser.component
+package com.github.telegram_bots.updater.component
 
 import java.time.LocalDateTime
 
-import com.github.telegram_bots.parser.domain.PostType._
-import com.github.telegram_bots.parser.implicits._
+import com.github.telegram_bots.core.domain.PostType._
+import com.github.telegram_bots.core.implicits._
 import org.jsoup.nodes.Document
 
 import scala.collection.JavaConverters._

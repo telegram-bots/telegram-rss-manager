@@ -1,4 +1,4 @@
-package com.github.telegram_bots.parser
+package com.github.telegram_bots.core
 
 import akka.http.scaladsl.coding.{Deflate, Gzip, NoCoding}
 import akka.http.scaladsl.model.HttpResponse

@@ -1,14 +1,14 @@
-package com.github.telegram_bots.parser.actor
+package com.github.telegram_bots.updater.actor
 
-import akka.actor.{Actor, ActorLogging, Props}
-import akka.util.Timeout
-import com.github.telegram_bots.parser.actor.ChannelStorage._
-import com.github.telegram_bots.parser.domain.Channel
+import akka.actor.{Actor, Props}
+import com.github.telegram_bots.core.ReactiveActor
+import com.github.telegram_bots.core.domain.Channel
+import com.github.telegram_bots.updater.actor.ChannelStorage._
 
 import scala.collection.mutable
 
 // Заглушка
-class ChannelStorage()(implicit timeout: Timeout) extends Actor with ActorLogging {
+class ChannelStorage extends Actor with ReactiveActor {
   val queue: mutable.Queue[Channel] = mutable.Queue(
     Channel("by_cotique", 1),
     Channel("vlast_zh", 1),
@@ -30,7 +30,7 @@ class ChannelStorage()(implicit timeout: Timeout) extends Actor with ActorLoggin
 }
 
 object ChannelStorage {
-  def props()(implicit timeout: Timeout): Props = Props(new ChannelStorage())
+  def props: Props = Props[ChannelStorage]
 
   case object GetRequest
 

@@ -1,27 +1,25 @@
-package com.github.telegram_bots.parser.actor
+package com.github.telegram_bots.updater.actor
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.{ask, pipe}
+import akka.stream.ActorAttributes
 import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.{ActorAttributes, ActorMaterializer, Materializer}
-import akka.util.Timeout
-import com.github.telegram_bots.parser.actor.ChannelParser.{ProcessRequest, _}
-import com.github.telegram_bots.parser.actor.PostParser.Parse
-import com.github.telegram_bots.parser.domain.Types._
-import com.github.telegram_bots.parser.domain.{Channel, EmptyPost, Post, PresentPost}
+import com.github.telegram_bots.core.ReactiveActor
+import com.github.telegram_bots.core.domain.types._
+import com.github.telegram_bots.core.domain.{Channel, EmptyPost, Post, PresentPost}
+import com.github.telegram_bots.updater.actor.ChannelParser.{ProcessRequest, _}
+import com.github.telegram_bots.updater.actor.PostParser.Parse
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 
 
-class ChannelParser(batchSize: Int, totalSize: Int)(implicit timeout: Timeout) extends Actor with ActorLogging {
+class ChannelParser(batchSize: Int, totalSize: Int) extends Actor with ReactiveActor {
+  override implicit val dispatcher: ExecutionContext = system.dispatchers.lookup(ChannelParser.dispatcher)
+
   val postParser: ActorRef = context.actorOf(PostParser.props)
   val postStorage: mutable.Map[String, ListBuffer[Post]] = mutable.Map[String, ListBuffer[Post]]()
-
-  implicit val system: ActorSystem = context.system
-  implicit val executionContext: ExecutionContext = system.dispatchers.lookup(dispatcher)
-  implicit val materializer: Materializer = ActorMaterializer()
 
   override def receive: Receive = {
     case action: Start => start(action)
@@ -42,7 +40,7 @@ class ChannelParser(batchSize: Int, totalSize: Int)(implicit timeout: Timeout) e
     val batchResponse = Source(lastPostId until lastPostId + batchSize)
       .mapAsyncUnordered(batchSize) { postId => postParser ? Parse(channel.url, postId, proxy) }
       .map(_.asInstanceOf[Post])
-      .withAttributes(ActorAttributes.dispatcher(dispatcher))
+      .withAttributes(ActorAttributes.dispatcher(ChannelParser.dispatcher))
       .grouped(batchSize)
       .map { posts => ProcessResponse(sender, channel, posts, proxy) }
       .runWith(Sink.head)
@@ -78,7 +76,7 @@ class ChannelParser(batchSize: Int, totalSize: Int)(implicit timeout: Timeout) e
 object ChannelParser {
   def dispatcher = "channelDispatcher"
 
-  def props(batchSize: Int, totalSize: Int)(implicit timeout: Timeout): Props =
+  def props(batchSize: Int, totalSize: Int): Props =
     Props(new ChannelParser(batchSize, totalSize)).withDispatcher(dispatcher)
 
   case class Start(channel: Channel, proxy: Proxy)

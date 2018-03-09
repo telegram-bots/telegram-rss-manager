@@ -1,30 +1,25 @@
-package com.github.telegram_bots.parser.actor
+package com.github.telegram_bots.updater.actor
 
 import java.net.InetSocketAddress
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 
 import akka.NotUsed
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.actor.{Actor, Props}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.http.scaladsl.{ClientTransport, Http}
-import akka.stream._
 import akka.stream.scaladsl.{Sink, Source}
-import akka.util.Timeout
-import com.github.telegram_bots.parser.actor.ProxyRetriever._
-import com.github.telegram_bots.parser.domain.Types._
-import com.github.telegram_bots.parser.implicits._
+import com.github.telegram_bots.core.ReactiveActor
+import com.github.telegram_bots.core.domain.types._
+import com.github.telegram_bots.core.implicits._
+import com.github.telegram_bots.updater.actor.ProxyProvider._
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future, TimeoutException}
+import scala.concurrent.{Future, TimeoutException}
 
-class ProxyRetriever(downloadSize: Int, minSize: Int)(implicit timeout: Timeout) extends Actor with ActorLogging {
+class ProxyProvider(downloadSize: Int, minSize: Int) extends Actor with ReactiveActor {
   val proxies: BlockingQueue[Proxy] = new LinkedBlockingQueue()
   var running: Boolean = false
-
-  implicit val system: ActorSystem = context.system
-  implicit val materializer: Materializer = ActorMaterializer()
-  implicit val executionContext: ExecutionContext = system.dispatcher
 
   override def receive: Receive = {
     case Get =>
@@ -43,12 +38,12 @@ class ProxyRetriever(downloadSize: Int, minSize: Int)(implicit timeout: Timeout)
 
     Source.lazilyAsync { () => Http().singleRequest(HttpRequest(uri = uri)) }
       .flatMapConcat(parseResponse)
-      .log("downloaded")(log)
+      .log("downloaded")
       .mapAsyncUnordered(downloadSize)(proxy => Future.successful(proxy).zip(checkWorking(proxy)))
       .recover { case _: TimeoutException => (Proxy.EMPTY, false) }
       .filter(_._2)
       .map(_._1)
-      .log("checked")(log)
+      .log("checked")
   }
 
   private def parseResponse(response: HttpResponse): Source[Proxy, Any] = {
@@ -80,9 +75,8 @@ class ProxyRetriever(downloadSize: Int, minSize: Int)(implicit timeout: Timeout)
   }
 }
 
-object ProxyRetriever {
-  def props(downloadSize: Int, minSize: Int)(implicit timeout: Timeout): Props =
-    Props(new ProxyRetriever(downloadSize, minSize))
+object ProxyProvider {
+  def props(downloadSize: Int, minSize: Int): Props = Props(new ProxyProvider(downloadSize, minSize))
 
   case object Get
 }

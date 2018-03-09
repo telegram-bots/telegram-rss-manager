@@ -1,6 +1,6 @@
-package com.github.telegram_bots.parser.domain
+package com.github.telegram_bots.core.domain
 
-object Types {
+object types {
   type FileURL = Option[String]
 
   type Author = Option[String]

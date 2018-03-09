@@ -1,24 +1,24 @@
-package com.github.telegram_bots.parser.actor
+package com.github.telegram_bots.updater.actor
 
 import java.net.InetSocketAddress
 import java.time.ZoneId
 
 import akka.NotUsed
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.actor.{Actor, Props}
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpHeader, HttpRequest}
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.http.scaladsl.{ClientTransport, Http}
 import akka.pattern.{ask, pipe}
 import akka.routing.SmallestMailboxPool
+import akka.stream.ActorAttributes
 import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.{ActorMaterializer, Materializer}
-import akka.util.Timeout
-import com.github.telegram_bots.parser.actor.PostParser.{Parse, dispatcher}
-import com.github.telegram_bots.parser.component.PostDataParser
-import com.github.telegram_bots.parser.domain.Types._
-import com.github.telegram_bots.parser.domain._
-import com.github.telegram_bots.parser.implicits._
+import com.github.telegram_bots.core.ReactiveActor
+import com.github.telegram_bots.core.domain._
+import com.github.telegram_bots.core.domain.types._
+import com.github.telegram_bots.core.implicits._
+import com.github.telegram_bots.updater.actor.PostParser.Parse
+import com.github.telegram_bots.updater.component.PostDataParser
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -26,23 +26,22 @@ import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
-class PostParser()(implicit val timeout: Timeout) extends Actor with ActorLogging {
-  val headers: Seq[HttpHeader] = getHeaders
+class PostParser extends Actor with ReactiveActor {
+  override implicit val dispatcher: ExecutionContext = system.dispatchers.lookup(PostParser.dispatcher)
 
-  implicit val system: ActorSystem = context.system
-  implicit val materializer: Materializer = ActorMaterializer()
-  implicit val executionContext: ExecutionContext = system.dispatchers.lookup(dispatcher)
+  val headers: Seq[HttpHeader] = getHeaders
 
   def receive: Receive = {
     case Parse(url, postId, proxy) =>
       val post = download(url, postId, proxy)
-        .map(checkResponse)
+        .flatMapConcat(checkResponse)
         .map(parse(url, postId)(_))
-        .log("parsed-post", post => s"$url [$postId] $post")(log)
+        .log("parsed-post", post => s"$url [$postId] $post")
         .recover { case e =>
           log.warning(s"Failed to parse ${e.getMessage}, retrying...")
           self ? Parse(url, postId, proxy)
         }
+        .withAttributes(ActorAttributes.dispatcher(PostParser.dispatcher))
         .runWith(Sink.head)
 
       pipe(post) to sender
@@ -61,13 +60,13 @@ class PostParser()(implicit val timeout: Timeout) extends Actor with ActorLoggin
       .map(Jsoup.parse)
   }
 
-  private def checkResponse(doc: Document): Option[Document] = {
+  private def checkResponse(doc: Document): Source[Option[Document], NotUsed] = {
     val error = doc.select(".tgme_widget_message_error").text().trim()
 
     error match {
-      case e if e == "Post not found" => Option.empty
-      case e if e.contains("Channel with username") => throw new RuntimeException(e)
-      case _ => Option(doc)
+      case e if e == "Post not found" => Source.single(Option.empty)
+      case e if e.contains("Channel with username") => Source.failed(new RuntimeException(e))
+      case _ => Source.single(Option(doc))
     }
   }
 
@@ -106,7 +105,7 @@ class PostParser()(implicit val timeout: Timeout) extends Actor with ActorLoggin
 object PostParser {
   def dispatcher = "postDispatcher"
 
-  def props()(implicit timeout: Timeout): Props = Props(new PostParser())
+  def props: Props = Props[PostParser]
     .withDispatcher(dispatcher)
     .withRouter(new SmallestMailboxPool(25))
 

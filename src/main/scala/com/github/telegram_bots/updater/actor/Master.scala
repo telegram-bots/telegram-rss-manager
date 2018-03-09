@@ -1,28 +1,21 @@
-package com.github.telegram_bots.parser.actor
+package com.github.telegram_bots.updater.actor
 
-import akka.actor.{Actor, ActorLogging, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.ask
-import akka.stream.{ActorMaterializer, Materializer}
-import akka.util.Timeout
-import com.github.telegram_bots.parser.actor.Master.{Complete, Next, Start}
-import com.github.telegram_bots.parser.actor.ProxyRetriever.Get
-import com.github.telegram_bots.parser.domain.Channel
-import com.github.telegram_bots.parser.domain.Types._
+import com.github.telegram_bots.core.ReactiveActor
+import com.github.telegram_bots.core.domain.Channel
+import com.github.telegram_bots.core.domain.types._
+import com.github.telegram_bots.updater.actor.Master.{Complete, Next, Start}
+import com.github.telegram_bots.updater.actor.ProxyProvider.Get
 
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.Await
 import scala.language.postfixOps
 
-class Master extends Actor with ActorLogging {
-  implicit val system: ActorSystem = context.system
-  implicit val timeout: Timeout = Timeout(5 seconds)
-  implicit val materializer: Materializer = ActorMaterializer()
-  implicit val executionContext: ExecutionContext = system.dispatcher
-
-  val proxyRetriever = system.actorOf(ProxyRetriever.props(25, 5))
-  val channelParser = system.actorOf(ChannelParser.props(5, 50))
-  val channelStorage = system.actorOf(ChannelStorage.props())
-  val postStorage = system.actorOf(PostStorage.props())
+class Master extends Actor with ReactiveActor {
+  val proxyRetriever: ActorRef = system.actorOf(ProxyProvider.props(25, 5))
+  val channelParser: ActorRef = system.actorOf(ChannelParser.props(5, 50))
+  val channelStorage: ActorRef = system.actorOf(ChannelStorage.props)
+  val postStorage: ActorRef = system.actorOf(PostStorage.props)
 
   override def receive: Receive = {
     case Start =>
