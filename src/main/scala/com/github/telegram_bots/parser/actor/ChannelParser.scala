@@ -5,10 +5,10 @@ import akka.pattern.{ask, pipe}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorAttributes, ActorMaterializer, Materializer}
 import akka.util.Timeout
-import com.github.telegram_bots.parser.actor.ChannelParser.{SendProcessRequest, _}
+import com.github.telegram_bots.parser.actor.ChannelParser.{ProcessRequest, _}
 import com.github.telegram_bots.parser.actor.PostParser.Parse
 import com.github.telegram_bots.parser.domain.Types._
-import com.github.telegram_bots.parser.domain.{EmptyPost, Post, PresentPost}
+import com.github.telegram_bots.parser.domain.{Channel, EmptyPost, Post, PresentPost}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -25,59 +25,53 @@ class ChannelParser(batchSize: Int, totalSize: Int)(implicit timeout: Timeout) e
 
   override def receive: Receive = {
     case action: Start => start(action)
-    case action: SendProcessRequest => sendRequest(action)
-    case action: ReceiveProcessResponse => receiveResponse(action)
-    case action: Complete => complete(action)
+    case action: ProcessRequest => sendRequest(action)
+    case action: ProcessResponse => receiveResponse(action)
   }
 
   private def start(action: Start): Unit = {
-    val Start(url, startingPostId, proxy) = action
+    val Start(channel, proxy) = action
 
-    log.info(s"Start parsing: $url [$startingPostId..${startingPostId + totalSize - 1}] $proxy")
-    self ! SendProcessRequest(url, startingPostId, startingPostId, proxy)
+    log.info(s"Start parsing: ${channel.url} [${channel.lastPostId}..${channel.lastPostId + totalSize - 1}] $proxy")
+    self ! ProcessRequest(sender, channel, channel.lastPostId, proxy)
   }
 
-  private def sendRequest(request: SendProcessRequest): Unit = {
-    val SendProcessRequest(url, startingPostId, lastPostId, proxy) = request
+  private def sendRequest(request: ProcessRequest): Unit = {
+    val ProcessRequest(sender, channel, lastPostId, proxy) = request
 
     val batchResponse = Source(lastPostId until lastPostId + batchSize)
-      .mapAsyncUnordered(batchSize) { postId => postParser ? Parse(url, postId, proxy) }
+      .mapAsyncUnordered(batchSize) { postId => postParser ? Parse(channel.url, postId, proxy) }
       .map(_.asInstanceOf[Post])
       .withAttributes(ActorAttributes.dispatcher(dispatcher))
       .grouped(batchSize)
-      .map { posts => ReceiveProcessResponse(url, startingPostId, posts, proxy) }
+      .map { posts => ProcessResponse(sender, channel, posts, proxy) }
       .runWith(Sink.head)
 
     pipe(batchResponse) to self
   }
 
-  private def receiveResponse(response: ReceiveProcessResponse): Unit = {
-    val ReceiveProcessResponse(url, startingPostId, posts, proxy) = response
+  private def receiveResponse(response: ProcessResponse): Unit = {
+    val ProcessResponse(sender, channel, posts , proxy) = response
 
-    postStorage.getOrElseUpdate(url, ListBuffer()) ++= posts
+    postStorage.getOrElseUpdate(channel.url, ListBuffer()) ++= posts
 
-    lazy val totalPostCount = postStorage(url).size
+    lazy val totalPostCount = postStorage(channel.url).size
     lazy val emptyPostInBatchCount = posts.count(_.isInstanceOf[EmptyPost])
 
     if (totalPostCount == totalSize || emptyPostInBatchCount == batchSize) {
-      val posts = postStorage(url).filter(_.isInstanceOf[PresentPost]).sortBy(_.id)
+      val posts = postStorage(channel.url).filter(_.isInstanceOf[PresentPost]).sortBy(_.id)
+      val lastPostId = posts.lastOption.map(_.id)
 
-      postStorage -= url
+      postStorage -= channel.url
 
-      self ! Complete(url, startingPostId, posts)
+      log.info(s"Complete parsing: ${channel.url} [${channel.lastPostId}..${lastPostId.getOrElse("-")}] (${posts.size} not empty)")
+
+      sender ! Complete(channel, lastPostId, posts)
     } else {
-      val nextBatchStartingId = posts.maxBy(_.id).id + 1
+      val nextBatchPostId = posts.maxBy(_.id).id + 1
 
-      self ! SendProcessRequest(url, startingPostId, nextBatchStartingId, proxy)
+      self ! ProcessRequest(sender, channel, nextBatchPostId, proxy)
     }
-  }
-
-  private def complete(action: Complete): Unit = {
-    val Complete(url, startingPostId, posts) = action
-    val lastPostId = posts.lastOption.map(_.id.toString).getOrElse("-")
-
-    log.info(s"Complete parsing: $url [$startingPostId..$lastPostId] (${posts.size} not empty)")
-    log.debug(s"Empty posts: ${(startingPostId until startingPostId + totalSize).diff(posts.map(_.id))}")
   }
 }
 
@@ -87,11 +81,11 @@ object ChannelParser {
   def props(batchSize: Int, totalSize: Int)(implicit timeout: Timeout): Props =
     Props(new ChannelParser(batchSize, totalSize)).withDispatcher(dispatcher)
 
-  case class Start(url: ChannelURL, startingPostId: PostID, proxy: Proxy)
+  case class Start(channel: Channel, proxy: Proxy)
 
-  case class SendProcessRequest(url: ChannelURL, startingPostId: PostID, lastPostId: PostID, proxy: Proxy)
+  case class ProcessRequest(sender: ActorRef, channel: Channel, lastPostId: PostID, proxy: Proxy)
 
-  case class ReceiveProcessResponse(url: ChannelURL, startingPostId: PostID, posts: Seq[Post], proxy: Proxy)
+  case class ProcessResponse(sender: ActorRef, channel: Channel, posts: Seq[Post], proxy: Proxy)
 
-  case class Complete(url: ChannelURL, startingPostId: PostID, posts: Seq[Post])
+  case class Complete(channel: Channel, lastPostId: Option[PostID], posts: Seq[Post])
 }

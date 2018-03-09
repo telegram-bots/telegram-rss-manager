@@ -14,11 +14,11 @@ import akka.routing.SmallestMailboxPool
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
-import com.github.telegram_bots.parser.implicits._
 import com.github.telegram_bots.parser.actor.PostParser.{Parse, dispatcher}
 import com.github.telegram_bots.parser.component.PostDataParser
 import com.github.telegram_bots.parser.domain.Types._
 import com.github.telegram_bots.parser.domain._
+import com.github.telegram_bots.parser.implicits._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
@@ -36,9 +36,9 @@ class PostParser()(implicit val timeout: Timeout) extends Actor with ActorLoggin
   def receive: Receive = {
     case Parse(url, postId, proxy) =>
       val post = download(url, postId, proxy)
-        .flatMapConcat(checkResponse)
+        .map(checkResponse)
         .map(parse(url, postId)(_))
-        .log("parsed-post", post => s"$url [$postId] $post")
+        .log("parsed-post", post => s"$url [$postId] $post")(log)
         .recover { case e =>
           log.warning(s"Failed to parse ${e.getMessage}, retrying...")
           self ? Parse(url, postId, proxy)
@@ -61,13 +61,13 @@ class PostParser()(implicit val timeout: Timeout) extends Actor with ActorLoggin
       .map(Jsoup.parse)
   }
 
-  private def checkResponse(doc: Document): Source[Option[Document], NotUsed] = {
+  private def checkResponse(doc: Document): Option[Document] = {
     val error = doc.select(".tgme_widget_message_error").text().trim()
 
     error match {
-      case e if e == "Post not found" => Source.single(Option.empty)
-      case e if e.contains("Channel with username") => Source.failed(new RuntimeException(e))
-      case _ => Source.single(Option(doc))
+      case e if e == "Post not found" => Option.empty
+      case e if e.contains("Channel with username") => throw new RuntimeException(e)
+      case _ => Option(doc)
     }
   }
 

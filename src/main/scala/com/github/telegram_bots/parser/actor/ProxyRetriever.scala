@@ -11,9 +11,9 @@ import akka.http.scaladsl.{ClientTransport, Http}
 import akka.stream._
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.Timeout
-import com.github.telegram_bots.parser.implicits._
 import com.github.telegram_bots.parser.actor.ProxyRetriever._
 import com.github.telegram_bots.parser.domain.Types._
+import com.github.telegram_bots.parser.implicits._
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, TimeoutException}
@@ -84,5 +84,5 @@ object ProxyRetriever {
   def props(downloadSize: Int, minSize: Int)(implicit timeout: Timeout): Props =
     Props(new ProxyRetriever(downloadSize, minSize))
 
-  object Get
+  case object Get
 }

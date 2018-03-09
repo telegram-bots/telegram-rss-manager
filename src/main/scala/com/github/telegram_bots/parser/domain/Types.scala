@@ -7,8 +7,6 @@ object Types {
 
   type ChannelURL = String
 
-  type BatchID = Int
-
   type PostID = Int
 
   case class Proxy(host: String, port: Int)
