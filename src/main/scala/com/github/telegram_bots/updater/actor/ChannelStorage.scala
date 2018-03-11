@@ -9,22 +9,31 @@ import scala.collection.mutable
 
 // Заглушка
 class ChannelStorage extends Actor with ReactiveActor {
-  val queue: mutable.Queue[Channel] = mutable.Queue(
-    Channel("by_cotique", 1),
-    Channel("vlast_zh", 1),
-    Channel("clickordie", 1),
-    Channel("dvachannel", 1),
-    Channel("dev_rb", 1),
-    Channel("mudrosti", 1),
-    Channel("neuralmachine", 1)
+  val list = mutable.MutableList(
+    (Channel("by_cotique", 1), false),
+    (Channel("vlast_zh", 1), false),
+    (Channel("clickordie", 1), false),
+    (Channel("dvachannel", 1), false),
+    (Channel("dev_rb", 1), false),
+    (Channel("mudrosti", 1), false),
+    (Channel("neuralmachine", 1), false)
   )
 
   override def receive: Receive = {
     case GetRequest =>
       log.info("Requested channel")
-      sender ! GetResponse(queue.dequeue())
+
+      val index = list.indexWhere(!_._2)
+      val element = list(index)
+      list(index) = element.copy(_2 = true)
+
+      sender ! GetResponse(element._1)
     case UpdateRequest(channel) =>
       log.info(s"Request channel unlock and update: $channel")
+
+      val index = list.indexWhere(_._1.url == channel.url)
+      list(index) = (channel, false)
+
       sender ! UpdateResponse(channel)
   }
 }
