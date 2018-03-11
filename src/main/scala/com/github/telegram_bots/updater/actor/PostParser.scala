@@ -3,70 +3,62 @@ package com.github.telegram_bots.updater.actor
 import java.net.InetSocketAddress
 import java.time.ZoneId
 
-import akka.NotUsed
 import akka.actor.{Actor, Props}
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpHeader, HttpRequest}
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.http.scaladsl.{ClientTransport, Http}
-import akka.pattern.{ask, pipe}
+import akka.pattern.pipe
 import akka.routing.SmallestMailboxPool
-import akka.stream.ActorAttributes
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.Sink
 import com.github.telegram_bots.core.ReactiveActor
 import com.github.telegram_bots.core.domain._
 import com.github.telegram_bots.core.domain.types._
 import com.github.telegram_bots.core.implicits._
-import com.github.telegram_bots.updater.actor.PostParser.Parse
+import com.github.telegram_bots.updater.actor.PostParser.{ParseRequest, ParseResponse}
 import com.github.telegram_bots.updater.component.PostDataParser
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
 import scala.collection.immutable.Seq
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 import scala.language.postfixOps
 
 class PostParser extends Actor with ReactiveActor {
-  override implicit val dispatcher: ExecutionContext = system.dispatchers.lookup(PostParser.dispatcher)
-
   val headers: Seq[HttpHeader] = getHeaders
 
   def receive: Receive = {
-    case Parse(url, postId, proxy) =>
-      val post = download(url, postId, proxy)
-        .flatMapConcat(checkResponse)
-        .map(parse(url, postId))
-        .log("parsed-post", post => s"$url [$postId] $post")
-        .recover { case e =>
-          log.warning(s"Failed to parse ${e.getMessage}, retrying...")
-          self ? Parse(url, postId, proxy)
-        }
-        .withAttributes(ActorAttributes.dispatcher(PostParser.dispatcher))
-        .runWith(Sink.head)
+    case ParseRequest(channel, postId, proxy) =>
+      val response = download(channel.url, postId, proxy)
+        .flatMap(checkResponse)
+        .map(parse(channel.url, postId))
+        .doOnNext(post => log.debug(s"Parsed post: ${channel.url} [$postId] $post"))
+        .map(ParseResponse(channel, _))
+        .doOnError(e => log.warning(s"Failed to parse post: ${e.getMessage}"))
 
-      pipe(post) to sender
+      pipe(response) to sender
   }
 
-  private def download(url: ChannelURL, postId: PostID, proxy: Proxy): Source[Document, Future[NotUsed]] = {
-    val settings = ConnectionPoolSettings(context.system)
+  private def download(url: ChannelURL, postId: PostID, proxy: Proxy): Future[Document] = {
+    val settings = ConnectionPoolSettings(system)
       .withTransport(ClientTransport.httpsProxy(
         InetSocketAddress.createUnresolved(proxy.host, proxy.port)
       ))
     val request = HttpRequest(uri = s"https://t.me/$url/$postId?embed=1&single=1").withHeaders(headers)
 
-    Source.lazilyAsync { () => Http().singleRequest(request, settings = settings) }
+    Http().singleRequest(request, settings = settings)
       .map(_.decode)
-      .flatMapConcat(_.getBody)
+      .flatMap(_.getBody.runWith(Sink.head))
       .map(Jsoup.parse)
   }
 
-  private def checkResponse(doc: Document): Source[Option[Document], NotUsed] = {
+  private def checkResponse(doc: Document): Future[Option[Document]] = {
     val error = doc.select(".tgme_widget_message_error").text.trim
 
     error match {
-      case e if e == "Post not found" => Source.single(Option.empty)
-      case e if e contains "Channel with username" => Source.failed(new RuntimeException(e))
-      case _ => Source.single(Option(doc))
+      case e if e == "Post not found" => Future.successful(Option.empty)
+      case e if e contains "Channel with username" => Future.failed(new RuntimeException(e))
+      case _ => Future.successful(Option(doc))
     }
   }
 
@@ -103,11 +95,11 @@ class PostParser extends Actor with ReactiveActor {
 }
 
 object PostParser {
-  def dispatcher = "postDispatcher"
-
   def props: Props = Props[PostParser]
-    .withDispatcher(dispatcher)
+    .withDispatcher("postDispatcher")
     .withRouter(new SmallestMailboxPool(25))
 
-  case class Parse(url: ChannelURL, postId: PostID, proxy: Proxy)
+  case class ParseRequest(channel: Channel, postId: PostID, proxy: Proxy)
+
+  case class ParseResponse(channel: Channel, post: Post)
 }

@@ -16,6 +16,15 @@ object implicits {
     def toSortedMap = SortedMap(tuples.toSeq: _*)
   }
 
+  implicit class ExtendedAnyRef[T <: AnyRef](underlying: T) {
+    def let[T2](func: (T) => T2): T2 = func(underlying)
+
+    def also(func: T => Unit): T = {
+      func(underlying)
+      underlying
+    }
+  }
+
   implicit class ExtendedString(str: String) {
     def optionIfBlank: Option[String] = {
       val trimmed = str.trim

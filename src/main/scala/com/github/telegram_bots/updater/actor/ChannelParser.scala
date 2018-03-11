@@ -1,92 +1,65 @@
 package com.github.telegram_bots.updater.actor
 
 import akka.actor.{Actor, ActorRef, Props}
-import akka.pattern.{ask, pipe}
-import akka.stream.ActorAttributes
-import akka.stream.scaladsl.{Sink, Source}
 import com.github.telegram_bots.core.ReactiveActor
 import com.github.telegram_bots.core.domain.types._
-import com.github.telegram_bots.core.domain.{Channel, EmptyPost, Post, PresentPost}
-import com.github.telegram_bots.updater.actor.ChannelParser.{ProcessRequest, _}
-import com.github.telegram_bots.updater.actor.PostParser.Parse
+import com.github.telegram_bots.core.domain.{Channel, Post, PresentPost}
+import com.github.telegram_bots.core.implicits.ExtendedAnyRef
+import com.github.telegram_bots.updater.actor.ChannelParser._
+import com.github.telegram_bots.updater.actor.PostParser.{ParseRequest, ParseResponse}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext
 
 
-class ChannelParser(batchSize: Int, totalSize: Int) extends Actor with ReactiveActor {
-  override implicit val dispatcher: ExecutionContext = system.dispatchers.lookup(ChannelParser.dispatcher)
-
+class ChannelParser(batchSize: Int) extends Actor with ReactiveActor {
   val postParser: ActorRef = context.actorOf(PostParser.props, PostParser.getClass.getSimpleName)
-  val postStorage: mutable.Map[String, ListBuffer[Post]] = mutable.Map[String, ListBuffer[Post]]()
+  val postStorage: mutable.Map[ChannelURL, ListBuffer[Post]] = mutable.Map()
+  val senders: mutable.Map[ChannelURL, ActorRef] = mutable.Map()
 
   override def receive: Receive = {
-    case action: Start => start(action)
-    case req: ProcessRequest => sendRequest(req)
-    case res: ProcessResponse => receiveResponse(res)
+    case Start(channel, proxy) => start(channel, proxy)
+    case ParseResponse(channel, post) => process(channel, post)
   }
 
-  private def start(action: Start): Unit = {
-    val Start(channel, proxy) = action
-    val Channel(url, lastPostId) = channel
-    val maxPostId = lastPostId + totalSize - 1
+  private def start(channel: Channel, proxy: Proxy): Unit = {
+    val Channel(url, startPostId) = channel
+    val endPostId = startPostId + batchSize - 1
 
-    log.info(s"Start parsing: $url [$lastPostId..$maxPostId] $proxy")
-    sendRequest(ProcessRequest(sender, channel, lastPostId, proxy))
+    log.info(s"Start parsing: $url [$startPostId..$endPostId] $proxy")
+
+    senders(url) = sender
+
+    for (postId <- startPostId to endPostId) {
+      postParser ! ParseRequest(channel, postId, proxy)
+    }
   }
 
-  private def sendRequest(request: ProcessRequest): Unit = {
-    val ProcessRequest(sender, channel, lastPostId, proxy) = request
+  private def process(channel: Channel, post: Post): Unit = {
+    val Channel(url, _) = channel
 
-    val batchResponse = Source(lastPostId until lastPostId + batchSize)
-      .mapAsyncUnordered(batchSize) { postId => postParser ? Parse(channel.url, postId, proxy) }
-      .map(_.asInstanceOf[Post])
-      .withAttributes(ActorAttributes.dispatcher(ChannelParser.dispatcher))
-      .grouped(batchSize)
-      .map(ProcessResponse(sender, channel, _, proxy))
-      .runWith(Sink.head)
+    val currentUrlPosts = postStorage.getOrElseUpdate(url, ListBuffer()).also(_ += post)
+    if (currentUrlPosts.lengthCompare(batchSize) == 0) {
+      val sender = senders(url)
+      val nonEmptyPosts = currentUrlPosts.collect { case post: PresentPost => post }.sortBy(_.id)
+      val firstPostId = nonEmptyPosts.head.id
+      val lastPostId = nonEmptyPosts.lastOption.map(_.id)
 
-    pipe(batchResponse) to self
-  }
+      postStorage -= url
+      senders -= url
 
-  private def receiveResponse(response: ProcessResponse): Unit = {
-    val ProcessResponse(sender, channel, posts , proxy) = response
-    val Channel(url, lastPostId) = channel
+      log.info(s"Complete parsing: $url [$firstPostId..${lastPostId.getOrElse("-")}] (${nonEmptyPosts.size} not empty)")
 
-    postStorage.getOrElseUpdate(url, ListBuffer()) ++= posts
-
-    lazy val totalPostCount = postStorage(url).size
-    lazy val emptyPostInBatchCount = posts.count(_.isInstanceOf[EmptyPost])
-
-    if (totalPostCount == totalSize || emptyPostInBatchCount == batchSize) {
-      val posts = postStorage(url).collect { case post: PresentPost => post }.sortBy(_.id)
-      val newLastPostId = posts.lastOption.map(_.id)
-
-      postStorage -= channel.url
-
-      log.info(s"Complete parsing: $url [$lastPostId..${newLastPostId.getOrElse("-")}] (${posts.size} not empty)")
-
-      sender ! Complete(channel, newLastPostId, posts)
-    } else {
-      val nextBatchPostId = posts.maxBy(_.id).id + 1
-
-      self ! ProcessRequest(sender, channel, nextBatchPostId, proxy)
+      sender ! Complete(channel, lastPostId, nonEmptyPosts)
     }
   }
 }
 
 object ChannelParser {
-  def dispatcher = "channelDispatcher"
-
-  def props(batchSize: Int, totalSize: Int): Props = Props(new ChannelParser(batchSize, totalSize))
-      .withDispatcher(dispatcher)
+  def props(batchSize: Int): Props = Props(new ChannelParser(batchSize))
+      .withDispatcher("channelDispatcher")
 
   case class Start(channel: Channel, proxy: Proxy)
 
-  case class ProcessRequest(sender: ActorRef, channel: Channel, lastPostId: PostID, proxy: Proxy)
-
-  case class ProcessResponse(sender: ActorRef, channel: Channel, posts: Seq[Post], proxy: Proxy)
-
-  case class Complete(channel: Channel, lastPostId: Option[PostID], posts: Seq[Post])
+  case class Complete(channel: Channel, endPostId: Option[PostID], posts: Seq[Post])
 }

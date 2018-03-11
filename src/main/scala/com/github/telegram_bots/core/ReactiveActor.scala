@@ -13,7 +13,7 @@ trait ReactiveActor { this: Actor ⇒
 
   implicit val system: ActorSystem = context.system
 
-  implicit val dispatcher: ExecutionContext = system.dispatcher
+  implicit val dispatcher: ExecutionContext = context.dispatcher
 
   implicit val timeout: Timeout = Timeout(5.seconds)
 
