@@ -12,10 +12,10 @@ import scala.concurrent.Await
 import scala.language.postfixOps
 
 class Master extends Actor with ReactiveActor {
-  val proxyRetriever: ActorRef = system.actorOf(ProxyProvider.props(25, 5))
-  val channelParser: ActorRef = system.actorOf(ChannelParser.props(5, 50))
-  val channelStorage: ActorRef = system.actorOf(ChannelStorage.props)
-  val postStorage: ActorRef = system.actorOf(PostStorage.props)
+  val proxyRetriever: ActorRef = context.actorOf(ProxyProvider.props(25, 5), ProxyProvider.getClass.getSimpleName)
+  val channelParser: ActorRef = context.actorOf(ChannelParser.props(5, 50), ChannelParser.getClass.getSimpleName)
+  val channelStorage: ActorRef = context.actorOf(ChannelStorage.props, ChannelStorage.getClass.getSimpleName)
+  val postStorage: ActorRef = context.actorOf(PostStorage.props, PostStorage.getClass.getSimpleName)
 
   override def receive: Receive = {
     case Start =>

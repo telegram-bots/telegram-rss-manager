@@ -17,5 +17,5 @@ trait ReactiveActor { this: Actor ⇒
 
   implicit val timeout: Timeout = Timeout(5.seconds)
 
-  implicit val materializer: Materializer = ActorMaterializer.create(system)
+  implicit val materializer: Materializer = ActorMaterializer.create(context)
 }

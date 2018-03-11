@@ -10,7 +10,7 @@ import scala.language.postfixOps
 
 object Main extends App {
   val system = ActorSystem("updater")
-  val masterActor = system.actorOf(Master.props)
+  val masterActor = system.actorOf(Master.props, name = Master.getClass.getSimpleName)
 
   masterActor ! Start
   Await.result(system.whenTerminated, Duration.Inf)

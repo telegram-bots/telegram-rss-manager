@@ -18,20 +18,22 @@ import scala.concurrent.ExecutionContext
 class ChannelParser(batchSize: Int, totalSize: Int) extends Actor with ReactiveActor {
   override implicit val dispatcher: ExecutionContext = system.dispatchers.lookup(ChannelParser.dispatcher)
 
-  val postParser: ActorRef = context.actorOf(PostParser.props)
+  val postParser: ActorRef = context.actorOf(PostParser.props, PostParser.getClass.getSimpleName)
   val postStorage: mutable.Map[String, ListBuffer[Post]] = mutable.Map[String, ListBuffer[Post]]()
 
   override def receive: Receive = {
     case action: Start => start(action)
-    case action: ProcessRequest => sendRequest(action)
-    case action: ProcessResponse => receiveResponse(action)
+    case req: ProcessRequest => sendRequest(req)
+    case res: ProcessResponse => receiveResponse(res)
   }
 
   private def start(action: Start): Unit = {
     val Start(channel, proxy) = action
+    val Channel(url, lastPostId) = channel
+    val maxPostId = lastPostId + totalSize - 1
 
-    log.info(s"Start parsing: ${channel.url} [${channel.lastPostId}..${channel.lastPostId + totalSize - 1}] $proxy")
-    self ! ProcessRequest(sender, channel, channel.lastPostId, proxy)
+    log.info(s"Start parsing: $url [$lastPostId..$maxPostId] $proxy")
+    sendRequest(ProcessRequest(sender, channel, lastPostId, proxy))
   }
 
   private def sendRequest(request: ProcessRequest): Unit = {
@@ -42,7 +44,7 @@ class ChannelParser(batchSize: Int, totalSize: Int) extends Actor with ReactiveA
       .map(_.asInstanceOf[Post])
       .withAttributes(ActorAttributes.dispatcher(ChannelParser.dispatcher))
       .grouped(batchSize)
-      .map { posts => ProcessResponse(sender, channel, posts, proxy) }
+      .map(ProcessResponse(sender, channel, _, proxy))
       .runWith(Sink.head)
 
     pipe(batchResponse) to self
@@ -50,21 +52,22 @@ class ChannelParser(batchSize: Int, totalSize: Int) extends Actor with ReactiveA
 
   private def receiveResponse(response: ProcessResponse): Unit = {
     val ProcessResponse(sender, channel, posts , proxy) = response
+    val Channel(url, lastPostId) = channel
 
-    postStorage.getOrElseUpdate(channel.url, ListBuffer()) ++= posts
+    postStorage.getOrElseUpdate(url, ListBuffer()) ++= posts
 
-    lazy val totalPostCount = postStorage(channel.url).size
+    lazy val totalPostCount = postStorage(url).size
     lazy val emptyPostInBatchCount = posts.count(_.isInstanceOf[EmptyPost])
 
     if (totalPostCount == totalSize || emptyPostInBatchCount == batchSize) {
-      val posts = postStorage(channel.url).filter(_.isInstanceOf[PresentPost]).sortBy(_.id)
-      val lastPostId = posts.lastOption.map(_.id)
+      val posts = postStorage(url).collect { case post: PresentPost => post }.sortBy(_.id)
+      val newLastPostId = posts.lastOption.map(_.id)
 
       postStorage -= channel.url
 
-      log.info(s"Complete parsing: ${channel.url} [${channel.lastPostId}..${lastPostId.getOrElse("-")}] (${posts.size} not empty)")
+      log.info(s"Complete parsing: $url [$lastPostId..${newLastPostId.getOrElse("-")}] (${posts.size} not empty)")
 
-      sender ! Complete(channel, lastPostId, posts)
+      sender ! Complete(channel, newLastPostId, posts)
     } else {
       val nextBatchPostId = posts.maxBy(_.id).id + 1
 
@@ -76,8 +79,8 @@ class ChannelParser(batchSize: Int, totalSize: Int) extends Actor with ReactiveA
 object ChannelParser {
   def dispatcher = "channelDispatcher"
 
-  def props(batchSize: Int, totalSize: Int): Props =
-    Props(new ChannelParser(batchSize, totalSize)).withDispatcher(dispatcher)
+  def props(batchSize: Int, totalSize: Int): Props = Props(new ChannelParser(batchSize, totalSize))
+      .withDispatcher(dispatcher)
 
   case class Start(channel: Channel, proxy: Proxy)
 

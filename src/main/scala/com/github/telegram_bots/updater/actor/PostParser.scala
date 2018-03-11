@@ -35,7 +35,7 @@ class PostParser extends Actor with ReactiveActor {
     case Parse(url, postId, proxy) =>
       val post = download(url, postId, proxy)
         .flatMapConcat(checkResponse)
-        .map(parse(url, postId)(_))
+        .map(parse(url, postId))
         .log("parsed-post", post => s"$url [$postId] $post")
         .recover { case e =>
           log.warning(s"Failed to parse ${e.getMessage}, retrying...")
@@ -61,11 +61,11 @@ class PostParser extends Actor with ReactiveActor {
   }
 
   private def checkResponse(doc: Document): Source[Option[Document], NotUsed] = {
-    val error = doc.select(".tgme_widget_message_error").text().trim()
+    val error = doc.select(".tgme_widget_message_error").text.trim
 
     error match {
       case e if e == "Post not found" => Source.single(Option.empty)
-      case e if e.contains("Channel with username") => Source.failed(new RuntimeException(e))
+      case e if e contains "Channel with username" => Source.failed(new RuntimeException(e))
       case _ => Source.single(Option(doc))
     }
   }
@@ -78,7 +78,7 @@ class PostParser extends Actor with ReactiveActor {
         id = postId,
         `type` = parser.parseType,
         content = parser.parseContent,
-        date = parser.parseDate.atZone(ZoneId.systemDefault()).toEpochSecond,
+        date = parser.parseDate.atZone(ZoneId.systemDefault).toEpochSecond,
         author = parser.parseAuthor,
         channelLink = url,
         channelName = parser.parseChannelName,

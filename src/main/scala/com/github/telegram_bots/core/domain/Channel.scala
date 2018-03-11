@@ -1,3 +1,5 @@
 package com.github.telegram_bots.core.domain
 
-case class Channel(url: String, lastPostId: Int)
+import com.github.telegram_bots.core.domain.types.{ChannelURL, PostID}
+
+case class Channel(url: ChannelURL, lastPostId: PostID)
