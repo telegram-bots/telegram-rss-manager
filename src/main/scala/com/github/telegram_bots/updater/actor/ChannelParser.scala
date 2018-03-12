@@ -2,9 +2,9 @@ package com.github.telegram_bots.updater.actor
 
 import akka.actor.{Actor, ActorRef, Props}
 import com.github.telegram_bots.core.ReactiveActor
-import com.github.telegram_bots.core.domain.types._
+import com.github.telegram_bots.core.domain.Types._
 import com.github.telegram_bots.core.domain.{Channel, Post, PresentPost}
-import com.github.telegram_bots.core.implicits.ExtendedAnyRef
+import com.github.telegram_bots.core.Implicits.ExtendedAnyRef
 import com.github.telegram_bots.updater.actor.ChannelParser._
 import com.github.telegram_bots.updater.actor.PostParser.{ParseRequest, ParseResponse}
 
@@ -23,7 +23,7 @@ class ChannelParser(batchSize: Int) extends Actor with ReactiveActor {
   }
 
   private def start(channel: Channel, proxy: Proxy): Unit = {
-    val Channel(url, startPostId) = channel
+    val Channel(_, url, startPostId) = channel
     val endPostId = startPostId + batchSize - 1
 
     log.info(s"Start parsing: $url [$startPostId..$endPostId] $proxy")
@@ -36,17 +36,15 @@ class ChannelParser(batchSize: Int) extends Actor with ReactiveActor {
   }
 
   private def process(channel: Channel, post: Post): Unit = {
-    val Channel(url, _) = channel
+    val url = channel.url
+    val postCount = postStorage.getOrElseUpdate(url, ListBuffer()).also(_ += post).size
 
-    val currentUrlPosts = postStorage.getOrElseUpdate(url, ListBuffer()).also(_ += post)
-    if (currentUrlPosts.lengthCompare(batchSize) == 0) {
-      val sender = senders(url)
-      val nonEmptyPosts = currentUrlPosts.collect { case post: PresentPost => post }.sortBy(_.id)
-      val firstPostId = nonEmptyPosts.head.id
+    if (postCount == batchSize) {
+      val sender = senders.remove(url).get
+      val allPosts = postStorage.remove(url).get.sortBy(_.id)
+      val nonEmptyPosts = allPosts.collect { case post: PresentPost => post }
+      val firstPostId = allPosts.head.id
       val lastPostId = nonEmptyPosts.lastOption.map(_.id)
-
-      postStorage -= url
-      senders -= url
 
       log.info(s"Complete parsing: $url [$firstPostId..${lastPostId.getOrElse("-")}] (${nonEmptyPosts.size} not empty)")
 

@@ -8,7 +8,7 @@ import akka.util.Timeout
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-trait ReactiveActor { this: Actor ⇒
+trait ReactiveActor { this: Actor =>
   implicit val log: LoggingAdapter = Logging(context.system, this)
 
   implicit val system: ActorSystem = context.system

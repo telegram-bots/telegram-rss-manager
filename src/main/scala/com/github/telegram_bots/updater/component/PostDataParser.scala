@@ -3,7 +3,7 @@ package com.github.telegram_bots.updater.component
 import java.time.LocalDateTime
 
 import com.github.telegram_bots.core.domain.PostType._
-import com.github.telegram_bots.core.implicits._
+import com.github.telegram_bots.core.Implicits._
 import org.jsoup.nodes.Document
 
 import scala.collection.JavaConverters._

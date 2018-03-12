@@ -13,8 +13,8 @@ import akka.routing.SmallestMailboxPool
 import akka.stream.scaladsl.Sink
 import com.github.telegram_bots.core.ReactiveActor
 import com.github.telegram_bots.core.domain._
-import com.github.telegram_bots.core.domain.types._
-import com.github.telegram_bots.core.implicits._
+import com.github.telegram_bots.core.domain.Types._
+import com.github.telegram_bots.core.Implicits._
 import com.github.telegram_bots.updater.actor.PostParser.{ParseRequest, ParseResponse}
 import com.github.telegram_bots.updater.component.PostDataParser
 import org.jsoup.Jsoup
@@ -29,9 +29,9 @@ class PostParser extends Actor with ReactiveActor {
 
   def receive: Receive = {
     case ParseRequest(channel, postId, proxy) =>
-      val response = download(channel.url, postId, proxy)
+      val response = download(channel, postId, proxy)
         .flatMap(checkResponse)
-        .map(parse(channel.url, postId))
+        .map(parse(channel, postId))
         .doOnNext(post => log.debug(s"Parsed post: ${channel.url} [$postId] $post"))
         .map(ParseResponse(channel, _))
         .doOnError(e => log.warning(s"Failed to parse post: ${e.getMessage}"))
@@ -39,12 +39,12 @@ class PostParser extends Actor with ReactiveActor {
       pipe(response) to sender
   }
 
-  private def download(url: ChannelURL, postId: PostID, proxy: Proxy): Future[Document] = {
+  private def download(channel: Channel, postId: PostID, proxy: Proxy): Future[Document] = {
     val settings = ConnectionPoolSettings(system)
       .withTransport(ClientTransport.httpsProxy(
         InetSocketAddress.createUnresolved(proxy.host, proxy.port)
       ))
-    val request = HttpRequest(uri = s"https://t.me/$url/$postId?embed=1&single=1").withHeaders(headers)
+    val request = HttpRequest(uri = s"https://t.me/${channel.url}/$postId?embed=1&single=1").withHeaders(headers)
 
     Http().singleRequest(request, settings = settings)
       .map(_.decode)
@@ -62,7 +62,7 @@ class PostParser extends Actor with ReactiveActor {
     }
   }
 
-  private def parse(url: ChannelURL, postId: PostID)(document: Option[Document]): Post = document match {
+  private def parse(channel: Channel, postId: PostID)(document: Option[Document]): Post = document match {
     case Some(message) =>
       val parser = new PostDataParser(message)
 
@@ -72,11 +72,11 @@ class PostParser extends Actor with ReactiveActor {
         content = parser.parseContent,
         date = parser.parseDate.atZone(ZoneId.systemDefault).toEpochSecond,
         author = parser.parseAuthor,
-        channelLink = url,
+        channelLink = channel.url,
         channelName = parser.parseChannelName,
         fileURL = parser.parseFileURL
       )
-    case _ => EmptyPost(id = postId, channelLink = url)
+    case _ => EmptyPost(id = postId, channelLink = channel.url)
   }
 
   private def getHeaders: Seq[HttpHeader] = {

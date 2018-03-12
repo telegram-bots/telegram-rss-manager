@@ -22,7 +22,6 @@ libraryDependencies ++= {
     // DB
     "com.typesafe.slick" %% "slick"                               % slickVersion,
     "com.typesafe.slick" %% "slick-hikaricp"                      % slickVersion,
-    "com.byteslounge"    %% "slick-repo"                          % "1.4.3",
     "org.postgresql"     %  "postgresql"                          % "42.2.1",
 
     "net.ruippeixotog" %% "scala-scraper"                         % "2.1.0",

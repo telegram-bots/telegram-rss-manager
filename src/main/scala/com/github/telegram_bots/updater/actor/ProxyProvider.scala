@@ -10,8 +10,8 @@ import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSett
 import akka.http.scaladsl.{ClientTransport, Http}
 import akka.stream.scaladsl.{Sink, Source}
 import com.github.telegram_bots.core.ReactiveActor
-import com.github.telegram_bots.core.domain.types._
-import com.github.telegram_bots.core.implicits._
+import com.github.telegram_bots.core.domain.Types._
+import com.github.telegram_bots.core.Implicits._
 import com.github.telegram_bots.updater.actor.ProxyProvider._
 
 import scala.concurrent.duration._

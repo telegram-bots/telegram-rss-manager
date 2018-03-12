@@ -1,13 +1,11 @@
 package com.github.telegram_bots.core.domain
 
-object types {
-  type FileURL = Option[String]
-
-  type Author = Option[String]
+object Types {
+  type PostID = Int
 
   type ChannelURL = String
 
-  type PostID = Int
+  type ID = Option[Int]
 
   case class Proxy(host: String, port: Int)
 
