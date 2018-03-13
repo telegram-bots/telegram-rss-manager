@@ -1,7 +1,5 @@
 package com.github.telegram_bots.updater.actor
 
-import java.time.ZoneId
-
 import akka.actor.Actor
 import akka.pattern.pipe
 import akka.stream.scaladsl.Sink
@@ -54,7 +52,7 @@ class PostParser extends Actor with ReactiveActor {
         id = postId,
         `type` = parser.parseType,
         content = parser.parseContent,
-        date = parser.parseDate.atZone(ZoneId.systemDefault).toEpochSecond,
+        date = parser.parseDate,
         author = parser.parseAuthor,
         channelLink = channel.url,
         channelName = parser.parseChannelName,

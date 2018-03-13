@@ -1,5 +1,7 @@
 package com.github.telegram_bots.core.domain
 
+import java.time.LocalDateTime
+
 import com.github.telegram_bots.core.domain.PostType.PostType
 import com.github.telegram_bots.core.domain.Types.{ChannelURL, PostID}
 
@@ -13,7 +15,7 @@ case class PresentPost(
   `type`: PostType,
   content: String,
   fileURL: Option[String] = Option.empty,
-  date: Long,
+  date: LocalDateTime,
   author: Option[String] = Option.empty,
   override val channelLink: ChannelURL,
   channelName: String

@@ -8,4 +8,6 @@ trait PersistenceModule { this: ConfigModule =>
   lazy val db: Database = Database.forConfig("db", config)
 
   lazy val channelRepository: ChannelRepository = wire[ChannelRepository]
+
+  lazy val postRepository: PostRepository = wire[PostRepository]
 }
