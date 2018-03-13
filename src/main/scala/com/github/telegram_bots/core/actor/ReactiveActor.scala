@@ -1,4 +1,4 @@
-package com.github.telegram_bots.core
+package com.github.telegram_bots.core.actor
 
 import akka.actor.{Actor, ActorSystem}
 import akka.event.{Logging, LoggingAdapter}

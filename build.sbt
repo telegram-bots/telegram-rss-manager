@@ -7,6 +7,7 @@ scalaVersion := "2.12.4"
 libraryDependencies ++= {
   val akkaVersion = "2.5.11"
   val slickVersion = "3.2.1"
+  val macWireVersion = "2.3.0"
 
   Seq(
     // Core
@@ -23,6 +24,12 @@ libraryDependencies ++= {
     "com.typesafe.slick" %% "slick"                               % slickVersion,
     "com.typesafe.slick" %% "slick-hikaricp"                      % slickVersion,
     "org.postgresql"     %  "postgresql"                          % "42.2.1",
+
+    // IOC
+    "com.softwaremill.macwire" %% "macros"                        % macWireVersion % "provided",
+    "com.softwaremill.macwire" %% "macrosakka"                    % macWireVersion % "provided",
+    "com.softwaremill.macwire" %% "util"                          % macWireVersion,
+    "com.softwaremill.macwire" %% "proxy"                         % macWireVersion,
 
     "net.ruippeixotog" %% "scala-scraper"                         % "2.1.0",
 

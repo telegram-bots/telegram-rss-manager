@@ -1,17 +1,22 @@
 package com.github.telegram_bots.updater
 
-import akka.actor.ActorSystem
-import com.github.telegram_bots.updater.actor.Master
+import com.github.telegram_bots.core.config.ConfigModule
+import com.github.telegram_bots.updater.actor.ActorModule
 import com.github.telegram_bots.updater.actor.Master.Start
+import com.github.telegram_bots.updater.persistence.PersistenceModule
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-object Main extends App {
-  val system = ActorSystem("updater")
-  val masterActor = system.actorOf(Master.props, name = Master.getClass.getSimpleName)
+object Main extends App
+  with ConfigModule
+  with PersistenceModule
+  with ActorModule
+{
+  val master = createMaster
 
-  masterActor ! Start
+  master ! Start
+
   Await.result(system.whenTerminated, Duration.Inf)
 }

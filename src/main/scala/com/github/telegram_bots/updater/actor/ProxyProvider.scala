@@ -4,26 +4,29 @@ import java.net.InetSocketAddress
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 
 import akka.NotUsed
-import akka.actor.{Actor, Props}
+import akka.actor.Actor
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.http.scaladsl.{ClientTransport, Http}
 import akka.stream.scaladsl.{Sink, Source}
-import com.github.telegram_bots.core.ReactiveActor
-import com.github.telegram_bots.core.domain.Types._
 import com.github.telegram_bots.core.Implicits._
+import com.github.telegram_bots.core.actor.ReactiveActor
+import com.github.telegram_bots.core.config.ConfigProperties
+import com.github.telegram_bots.core.domain.Types._
 import com.github.telegram_bots.updater.actor.ProxyProvider._
+import com.typesafe.config.Config
 
 import scala.concurrent.duration._
 import scala.concurrent.{Future, TimeoutException}
 
-class ProxyProvider(downloadSize: Int, minSize: Int) extends Actor with ReactiveActor {
+class ProxyProvider(config: Config) extends Actor with ReactiveActor {
+  val props = new Properties(config)
   val proxies: BlockingQueue[Proxy] = new LinkedBlockingQueue()
   var running: Boolean = false
 
   override def receive: Receive = {
     case Get =>
-      if (!running && proxies.size() <= minSize) {
+      if (!running && proxies.size() <= props.minSize) {
         running = true
         downloadProxies
           .runWith(Sink.foreach(proxies.offer(_)))
@@ -34,12 +37,12 @@ class ProxyProvider(downloadSize: Int, minSize: Int) extends Actor with Reactive
   }
 
   private def downloadProxies: Source[Proxy, Future[NotUsed]] = {
-    val uri = s"http://pubproxy.com/api/proxy?format=txt&type=http&limit=$downloadSize&level=anonymous&https=true&user_agent=true"
+    val uri = s"http://pubproxy.com/api/proxy?format=txt&type=http&limit=${props.downloadSize}&level=anonymous&https=true&user_agent=true"
 
     Source.lazilyAsync { () => Http().singleRequest(HttpRequest(uri = uri)) }
       .flatMapConcat(parseResponse)
       .log("downloaded")
-      .mapAsyncUnordered(downloadSize)(proxy => Future.successful(proxy).zip(checkWorking(proxy)))
+      .mapAsyncUnordered(props.downloadSize)(proxy => Future.successful(proxy).zip(checkWorking(proxy)))
       .recover { case _: TimeoutException => (Proxy.EMPTY, false) }
       .filter(_._2)
       .map(_._1)
@@ -76,7 +79,10 @@ class ProxyProvider(downloadSize: Int, minSize: Int) extends Actor with Reactive
 }
 
 object ProxyProvider {
-  def props(downloadSize: Int, minSize: Int): Props = Props(new ProxyProvider(downloadSize, minSize))
-
   case object Get
+
+  class Properties(root: Config) extends ConfigProperties(root, "akka.actor.self.proxy-provider") {
+    val downloadSize: Int = self.getInt("download-size")
+    val minSize: Int = self.getInt("min-size")
+  }
 }

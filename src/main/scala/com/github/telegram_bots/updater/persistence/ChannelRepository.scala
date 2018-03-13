@@ -1,4 +1,4 @@
-package com.github.telegram_bots.updater.repository
+package com.github.telegram_bots.updater.persistence
 
 import com.github.telegram_bots.core.domain.Channel
 import slick.dbio.{DBIOAction, NoStream}

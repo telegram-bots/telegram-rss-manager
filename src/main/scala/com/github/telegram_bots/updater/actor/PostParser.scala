@@ -3,18 +3,17 @@ package com.github.telegram_bots.updater.actor
 import java.net.InetSocketAddress
 import java.time.ZoneId
 
-import akka.actor.{Actor, Props}
+import akka.actor.Actor
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpHeader, HttpRequest}
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.http.scaladsl.{ClientTransport, Http}
 import akka.pattern.pipe
-import akka.routing.SmallestMailboxPool
 import akka.stream.scaladsl.Sink
-import com.github.telegram_bots.core.ReactiveActor
-import com.github.telegram_bots.core.domain._
-import com.github.telegram_bots.core.domain.Types._
 import com.github.telegram_bots.core.Implicits._
+import com.github.telegram_bots.core.actor.ReactiveActor
+import com.github.telegram_bots.core.domain.Types._
+import com.github.telegram_bots.core.domain._
 import com.github.telegram_bots.updater.actor.PostParser.{ParseRequest, ParseResponse}
 import com.github.telegram_bots.updater.component.PostDataParser
 import org.jsoup.Jsoup
@@ -95,10 +94,6 @@ class PostParser extends Actor with ReactiveActor {
 }
 
 object PostParser {
-  def props: Props = Props[PostParser]
-    .withDispatcher("postDispatcher")
-    .withRouter(new SmallestMailboxPool(25))
-
   case class ParseRequest(channel: Channel, postId: PostID, proxy: Proxy)
 
   case class ParseResponse(channel: Channel, post: Post)

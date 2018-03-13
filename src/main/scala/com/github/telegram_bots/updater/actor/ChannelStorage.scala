@@ -1,16 +1,20 @@
 package com.github.telegram_bots.updater.actor
 
-import akka.actor.{Actor, Props}
-import com.github.telegram_bots.core.ReactiveActor
-import com.github.telegram_bots.core.domain.Channel
+import akka.actor.Actor
 import com.github.telegram_bots.core.Implicits.ExtendedFuture
+import com.github.telegram_bots.core.actor.ReactiveActor
+import com.github.telegram_bots.core.config.ConfigProperties
+import com.github.telegram_bots.core.domain.Channel
 import com.github.telegram_bots.updater.actor.ChannelStorage._
-import com.github.telegram_bots.updater.repository.ChannelRepository
+import com.github.telegram_bots.updater.persistence.ChannelRepository
+import com.typesafe.config.Config
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.Future
 
-class ChannelStorage(repository: ChannelRepository) extends Actor with ReactiveActor {
+class ChannelStorage(config: Config, repository: ChannelRepository) extends Actor with ReactiveActor {
+  val props = new Properties(config)
+
   override def receive: Receive = {
     case GetRequest =>
       log.debug("Requested GetRequest")
@@ -63,8 +67,6 @@ class ChannelStorage(repository: ChannelRepository) extends Actor with ReactiveA
 }
 
 object ChannelStorage {
-  def props(repository: ChannelRepository): Props = Props(new ChannelStorage(repository))
-
   case object GetRequest
 
   case class GetResponse(channel: Channel)
@@ -76,4 +78,8 @@ object ChannelStorage {
   case object UnlockAllRequest
 
   case object UnlockAllResponse
+
+  class Properties(root: Config) extends ConfigProperties(root, "akka") {
+    val systemName: String = self.getString("system-name")
+  }
 }

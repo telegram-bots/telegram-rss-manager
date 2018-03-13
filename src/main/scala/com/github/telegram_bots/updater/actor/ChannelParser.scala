@@ -1,19 +1,22 @@
 package com.github.telegram_bots.updater.actor
 
-import akka.actor.{Actor, ActorRef, Props}
-import com.github.telegram_bots.core.ReactiveActor
+import akka.actor.{Actor, ActorRef}
+import com.github.telegram_bots.core.Implicits.ExtendedAnyRef
+import com.github.telegram_bots.core.actor.ReactiveActor
+import com.github.telegram_bots.core.config.ConfigProperties
 import com.github.telegram_bots.core.domain.Types._
 import com.github.telegram_bots.core.domain.{Channel, Post, PresentPost}
-import com.github.telegram_bots.core.Implicits.ExtendedAnyRef
 import com.github.telegram_bots.updater.actor.ChannelParser._
 import com.github.telegram_bots.updater.actor.PostParser.{ParseRequest, ParseResponse}
+import com.softwaremill.tagging.@@
+import com.typesafe.config.Config
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 
-class ChannelParser(batchSize: Int) extends Actor with ReactiveActor {
-  val postParser: ActorRef = context.actorOf(PostParser.props, PostParser.getClass.getSimpleName)
+class ChannelParser(config: Config, postParser: ActorRef @@ PostParser) extends Actor with ReactiveActor {
+  val props: Properties = new Properties(config)
   val postStorage: mutable.Map[ChannelURL, ListBuffer[Post]] = mutable.Map()
   val senders: mutable.Map[ChannelURL, ActorRef] = mutable.Map()
 
@@ -24,7 +27,7 @@ class ChannelParser(batchSize: Int) extends Actor with ReactiveActor {
 
   private def start(channel: Channel, proxy: Proxy): Unit = {
     val Channel(_, url, startPostId) = channel
-    val endPostId = startPostId + batchSize - 1
+    val endPostId = startPostId + props.batchSize - 1
 
     log.info(s"Start parsing: $url [$startPostId..$endPostId] $proxy")
 
@@ -39,7 +42,7 @@ class ChannelParser(batchSize: Int) extends Actor with ReactiveActor {
     val url = channel.url
     val postCount = postStorage.getOrElseUpdate(url, ListBuffer()).also(_ += post).size
 
-    if (postCount == batchSize) {
+    if (postCount == props.batchSize) {
       val sender = senders.remove(url).get
       val allPosts = postStorage.remove(url).get.sortBy(_.id)
       val nonEmptyPosts = allPosts.collect { case post: PresentPost => post }
@@ -54,10 +57,11 @@ class ChannelParser(batchSize: Int) extends Actor with ReactiveActor {
 }
 
 object ChannelParser {
-  def props(batchSize: Int): Props = Props(new ChannelParser(batchSize))
-      .withDispatcher("channelDispatcher")
-
   case class Start(channel: Channel, proxy: Proxy)
 
   case class Complete(channel: Channel, endPostId: Option[PostID], posts: Seq[Post])
+
+  class Properties(root: Config) extends ConfigProperties(root, "akka.actor.self.channel-parser") {
+    val batchSize: Int = self.getInt("batch-size")
+  }
 }
