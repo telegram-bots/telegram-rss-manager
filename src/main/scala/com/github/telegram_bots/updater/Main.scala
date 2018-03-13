@@ -14,8 +14,6 @@ object Main extends App
   with PersistenceModule
   with ActorModule
 {
-  val master = createMaster
-
   master ! Start
 
   Await.result(system.whenTerminated, Duration.Inf)
