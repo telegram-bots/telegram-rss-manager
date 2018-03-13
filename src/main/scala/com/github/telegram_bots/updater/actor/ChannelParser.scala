@@ -61,7 +61,7 @@ object ChannelParser {
 
   case class Complete(channel: Channel, endPostId: Option[PostID], posts: Seq[Post])
 
-  class Properties(root: Config) extends ConfigProperties(root, "akka.actor.self.channel-parser") {
+  class Properties(root: Config) extends ConfigProperties(root, "akka.actor.config.channel-parser") {
     val batchSize: Int = self.getInt("batch-size")
   }
 }

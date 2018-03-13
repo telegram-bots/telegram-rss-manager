@@ -8,7 +8,7 @@ import com.softwaremill.macwire._
 import com.softwaremill.tagging._
 
 trait ActorModule { this: PersistenceModule with ConfigModule =>
-  lazy val system = ActorSystem(config.getConfig("akka").getString("system-name"))
+  lazy val system = ActorSystem(config.getString("akka.system-name"))
 
   def createProxyProvider: ActorRef @@ ProxyProvider =
     system.actorOf(Props(wire[ProxyProvider]), ProxyProvider.getClass.getName).taggedWith[ProxyProvider]
