@@ -1,30 +1,37 @@
 package com.github.telegram_bots.updater.persistence
 
-import java.sql.Timestamp
-import java.time.{LocalDateTime, ZoneId}
+import java.time.LocalDateTime
 
 import com.github.telegram_bots.core.domain.PostType.PostType
-import com.github.telegram_bots.core.domain.{Post, PostType, PresentPost}
+import com.github.telegram_bots.core.domain.{Post, PresentPost}
+import com.github.telegram_bots.core.persistence.Mappers._
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.Future
 
 class PostRepository(db: Database) {
-  val postsQuery: TableQuery[Posts] = TableQuery[Posts]
+  private val postsQuery: TableQuery[Posts] = TableQuery[Posts]
 
-  def saveAll(posts: Seq[Post]): Future[Option[Int]] = db.run { postsQuery ++= posts.map(_.asInstanceOf[PresentPost]) }
+  def saveAll(posts: Seq[Post]): Future[Option[Int]] =
+    db.run { postsQuery ++= posts.map(_.asInstanceOf[PresentPost]) }
+
+  def getLatest(userId: Int, subscriptionName: String, limit: Int): Future[Seq[Post]] = {
+    val query = sql"""
+      SELECT p.*
+      FROM users AS u
+        JOIN subscriptions AS s ON s.user_id = u.id
+        JOIN channels AS c ON c.id = s.channel_id
+        JOIN posts AS p ON p.channel_link = c.url
+      WHERE u.telegram_id = $userId AND s.name = $subscriptionName
+      ORDER BY p.date DESC
+      LIMIT $limit;
+      """
+
+    db.run { query.as[PresentPost] }
+  }
 }
 
 class Posts(tag: Tag) extends Table[PresentPost](tag, "posts") {
-  private implicit val localDateTimeMapper = MappedColumnType.base[LocalDateTime, Timestamp](
-    date => Timestamp.from(date.atZone(ZoneId.systemDefault()).toInstant),
-    _.toInstant.atZone(ZoneId.systemDefault()).toLocalDateTime
-  )
-  private implicit val postTypeMapper = MappedColumnType.base[PostType, String](
-    _.toString,
-    PostType.withName
-  )
-
   def id: Rep[Int] = column[Int]("id")
   def `type`: Rep[PostType] = column[PostType]("post_type")
   def content: Rep[String] = column[String]("content")

@@ -1,24 +1,22 @@
 package com.github.telegram_bots.updater.persistence
 
+import java.sql.Timestamp
+
 import com.github.telegram_bots.core.domain.Channel
 import slick.dbio.{DBIOAction, NoStream}
-import slick.jdbc.GetResult
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.Future
 
 class ChannelRepository(db: Database) {
-  private implicit val getResult: AnyRef with GetResult[Channel] = GetResult(r => Channel(r.<<?, r.<<, r.<<))
+  private val channelQuery: TableQuery[Channels] = TableQuery[Channels]
 
   def firstNonLocked(): Future[Option[Channel]] = {
-    val query = sql"""
-      SELECT id, url, last_post_id FROM channels
-      WHERE in_work = FALSE
-      ORDER BY updated_at DESC
-      LIMIT 1
-      """
+    val query = channelQuery.filter(!_.inWork)
+      .sortBy(_.updatedAt.desc)
+      .take(1)
 
-    db.run { query.as[Channel].headOption }
+    db.run { query.result.headOption }
   }
 
   def update(channel: Channel): Future[Int] = {
@@ -36,34 +34,42 @@ class ChannelRepository(db: Database) {
   }
 
   def lock(channel: Channel, workerSystem: String): Future[Int] = {
-    val query =sqlu"""
-      UPDATE channels
-      SET in_work = TRUE, worker_system = $workerSystem
-      WHERE id = ${channel.id}
-      """
+    val query = channelQuery
+      .filter(_.id === channel.id)
+      .map(c => (c.inWork, c.workerSystem))
+      .update(true, Some(workerSystem))
 
     db.run { query }
   }
 
   def unlock(channel: Channel, workerSystem: String): Future[Int] = {
-    val query = sqlu"""
-      UPDATE channels
-      SET in_work = FALSE, worker_system = NULL
-      WHERE id = ${channel.id} AND worker_system = $workerSystem
-      """
+    val query = channelQuery
+      .filter(_.id === channel.id)
+      .filter(_.workerSystem === workerSystem)
+      .map(c => (c.inWork, c.workerSystem))
+      .update(false, None)
 
     db.run { query }
   }
 
   def unlockAll(workerSystem: String): Future[Int] = {
-    val query =sqlu"""
-      UPDATE channels
-      SET in_work = FALSE, worker_system = NULL
-      WHERE worker_system = $workerSystem
-      """
+    val query = channelQuery.filter(_.workerSystem === workerSystem)
+      .map(c => (c.inWork, c.workerSystem))
+      .update(false, None)
 
     db.run { query }
   }
 
   def run[R](action: DBIOAction[R, NoStream, Nothing]): Future[R] = db.run(action)
+}
+
+class Channels(tag: Tag) extends Table[Channel](tag, "channels") {
+  def id: Rep[Int] = column[Int]("id", O.PrimaryKey, O.AutoInc)
+  def url: Rep[String] = column[String]("url")
+  def lastPostId: Rep[Int] = column[Int]("last_post_id")
+  def inWork: Rep[Boolean] = column[Boolean]("in_work")
+  def workerSystem: Rep[Option[String]] = column[Option[String]]("worker_system")
+  def updatedAt: Rep[Timestamp] = column[Timestamp]("updated_at")
+
+  def * = (id, url, lastPostId) <> ((Channel.apply _).tupled, Channel.unapply)
 }
