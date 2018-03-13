@@ -42,7 +42,7 @@ class ChannelStorage(config: Config, repository: ChannelRepository) extends Acto
       .from(
         for {
           channel <- repository.firstNonLocked()
-          _ <- channel.map(repository.lock).getOrElse(Future.successful(Nil))
+          _ <- channel.map(repository.lock(_, props.systemName)).getOrElse(Future.successful(Nil))
         } yield channel
       )
       .transactionally
@@ -55,7 +55,7 @@ class ChannelStorage(config: Config, repository: ChannelRepository) extends Acto
       .from(
         for {
           _ <- repository.update(channel)
-          _ <- repository.unlock(channel)
+          _ <- repository.unlock(channel, props.systemName)
         } yield channel
       )
       .transactionally
@@ -63,7 +63,7 @@ class ChannelStorage(config: Config, repository: ChannelRepository) extends Acto
     repository.run(action)
   }
 
-  private def unlockAll(): Future[Int] = repository.unlockAll()
+  private def unlockAll(): Future[Int] = repository.unlockAll(props.systemName)
 }
 
 object ChannelStorage {

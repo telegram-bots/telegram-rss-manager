@@ -35,14 +35,35 @@ class ChannelRepository(db: Database) {
     db.run { query }
   }
 
-  def lock(channel: Channel): Future[Int] =
-    db.run { sqlu"UPDATE channels SET in_work = TRUE WHERE id = ${channel.id}" }
+  def lock(channel: Channel, workerSystem: String): Future[Int] = {
+    val query =sqlu"""
+      UPDATE channels
+      SET in_work = TRUE, worker_system = $workerSystem
+      WHERE id = ${channel.id}
+      """
 
-  def unlock(channel: Channel): Future[Int] =
-    db.run { sqlu"UPDATE channels SET in_work = FALSE WHERE id = ${channel.id}" }
+    db.run { query }
+  }
 
-  def unlockAll(): Future[Int] =
-    db.run { sqlu"UPDATE channels SET in_work = FALSE" }
+  def unlock(channel: Channel, workerSystem: String): Future[Int] = {
+    val query = sqlu"""
+      UPDATE channels
+      SET in_work = FALSE, worker_system = NULL
+      WHERE id = ${channel.id} AND worker_system = $workerSystem
+      """
+
+    db.run { query }
+  }
+
+  def unlockAll(workerSystem: String): Future[Int] = {
+    val query =sqlu"""
+      UPDATE channels
+      SET in_work = FALSE, worker_system = NULL
+      WHERE worker_system = $workerSystem
+      """
+
+    db.run { query }
+  }
 
   def run[R](action: DBIOAction[R, NoStream, Nothing]): Future[R] = db.run(action)
 }
