@@ -9,7 +9,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-object Main extends App
+object UpdaterService extends App
   with ConfigModule
   with PersistenceModule
   with ActorModule

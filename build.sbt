@@ -1,40 +1,44 @@
-name := "telegram-rss-manager"
+import sbt.Keys.libraryDependencies
+
+name := Build.namePrefix + "root"
 
 version := "0.0.1"
 
-scalaVersion := "2.12.4"
+scalaVersion := Build.scalaVersion
 
-libraryDependencies ++= {
-  val akkaVersion = "2.5.11"
-  val slickVersion = "3.2.1"
-  val macWireVersion = "2.3.0"
+lazy val commonSettings = Seq(
+  organization := "com.github.telegram_bots",
+  scalaVersion := Build.scalaVersion,
 
-  Seq(
-    // Core
-    "com.typesafe.akka" %% "akka-actor"                           % akkaVersion,
-    "com.typesafe.akka" %% "akka-stream"                          % akkaVersion,
-    "com.typesafe.akka" %% "akka-remote"                          % akkaVersion,
-    "com.typesafe.akka" %% "akka-http"                            % "10.0.11",
+  libraryDependencies ++= {
+    Seq(
+      // Config
+      "com.typesafe" % "config"                                     % "1.3.3" % "provided",
 
-    // Logging
-    "com.typesafe.akka" %% "akka-slf4j"                           % akkaVersion,
-    "ch.qos.logback"    %  "logback-classic"                      % "1.2.3",
+      // Akka
+      "com.typesafe.akka" %% "akka-actor"                           % Dependencies.akkaVersion % "provided",
+      "com.typesafe.akka" %% "akka-stream"                          % Dependencies.akkaVersion % "provided",
+      "com.typesafe.akka" %% "akka-http"                            % Dependencies.akkaHttpVersion % "provided",
 
-    // DB
-    "com.typesafe.slick" %% "slick"                               % slickVersion,
-    "com.typesafe.slick" %% "slick-hikaricp"                      % slickVersion,
-    "org.postgresql"     %  "postgresql"                          % "42.2.1",
+      // DB
+      "com.typesafe.slick" %% "slick"                               % Dependencies.slickVersion % "provided",
 
-    // IOC
-    "com.softwaremill.macwire" %% "macros"                        % macWireVersion % "provided",
-    "com.softwaremill.macwire" %% "macrosakka"                    % macWireVersion % "provided",
-    "com.softwaremill.macwire" %% "util"                          % macWireVersion,
-    "com.softwaremill.macwire" %% "proxy"                         % macWireVersion,
+      // Tests
+      "org.scalatest" %% "scalatest"                                % "3.0.5" % Test
+    )
+  }
+)
 
-    "net.ruippeixotog" %% "scala-scraper"                         % "2.1.0",
-    "org.scala-lang.modules" %% "scala-xml"                       % "1.1.0",
+lazy val core = project
+  .settings(commonSettings)
 
-    // Testing
-    "org.scalatest" %% "scalatest" % "3.0.5" % Test
-  )
-}
+lazy val updater = project
+  .settings(commonSettings)
+  .dependsOn(core)
+
+lazy val web = project
+  .settings(commonSettings)
+  .dependsOn(core)
+
+lazy val root = (project in file("."))
+  .aggregate(core, updater, web)
