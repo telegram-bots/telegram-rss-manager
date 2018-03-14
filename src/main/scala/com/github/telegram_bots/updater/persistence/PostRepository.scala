@@ -14,21 +14,6 @@ class PostRepository(db: Database) {
 
   def saveAll(posts: Seq[Post]): Future[Option[Int]] =
     db.run { postsQuery ++= posts.map(_.asInstanceOf[PresentPost]) }
-
-  def getLatest(userId: Int, subscriptionName: String, limit: Int): Future[Seq[Post]] = {
-    val query = sql"""
-      SELECT p.*
-      FROM users AS u
-        JOIN subscriptions AS s ON s.user_id = u.id
-        JOIN channels AS c ON c.id = s.channel_id
-        JOIN posts AS p ON p.channel_link = c.url
-      WHERE u.telegram_id = $userId AND s.name = $subscriptionName
-      ORDER BY p.date DESC
-      LIMIT $limit;
-      """
-
-    db.run { query.as[PresentPost] }
-  }
 }
 
 class Posts(tag: Tag) extends Table[PresentPost](tag, "posts") {

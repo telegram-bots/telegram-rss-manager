@@ -5,7 +5,7 @@ import java.time.{LocalDateTime, ZoneId}
 
 import com.github.telegram_bots.core.domain.{Channel, PostType, PresentPost}
 import slick.jdbc.PostgresProfile.api._
-import slick.jdbc.{GetResult, JdbcType}
+import slick.jdbc.{GetResult, GetTupleResult, JdbcType}
 
 object Mappers {
   def enumMapper(enum: Enumeration): JdbcType[enum.Value] = MappedColumnType.base[enum.Value, String](

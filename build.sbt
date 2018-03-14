@@ -32,6 +32,7 @@ libraryDependencies ++= {
     "com.softwaremill.macwire" %% "proxy"                         % macWireVersion,
 
     "net.ruippeixotog" %% "scala-scraper"                         % "2.1.0",
+    "org.scala-lang.modules" %% "scala-xml"                       % "1.1.0",
 
     // Testing
     "org.scalatest" %% "scalatest" % "3.0.5" % Test
