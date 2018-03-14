@@ -7,11 +7,14 @@ import com.softwaremill.macwire.akkasupport._
 import com.softwaremill.tagging._
 
 trait ActorModule { this: PersistenceModule with ConfigModule =>
-  lazy val system = ActorSystem(config.getString("akka.system-name"))
+  implicit lazy val system: ActorSystem = ActorSystem(config.getString("akka.system-name"))
 
-  val postStorage: ActorRef @@ PostStorage =
-    wireActor[PostStorage](PostStorage.getClass.getName).taggedWith[PostStorage]
+  def createPostStorage: ActorRef @@ PostStorage =
+    wireAnonymousActor[PostStorage].taggedWith[PostStorage]
 
-  val rssGenerator: ActorRef @@ RSSGenerator =
-    wireActor[RSSGenerator](RSSGenerator.getClass.getName).taggedWith[RSSGenerator]
+  def createRSSGenerator: ActorRef @@ RSSGenerator =
+    wireAnonymousActor[RSSGenerator].taggedWith[RSSGenerator]
+
+  def createFeedResponder: ActorRef @@ FeedResponder =
+    wireAnonymousActor[FeedResponder].taggedWith[FeedResponder]
 }

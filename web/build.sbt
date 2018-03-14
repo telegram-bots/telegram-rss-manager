@@ -8,6 +8,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-stream"                          % Dependencies.akkaVersion,
   "com.typesafe.akka" %% "akka-remote"                          % Dependencies.akkaVersion,
   "com.typesafe.akka" %% "akka-http"                            % Dependencies.akkaHttpVersion,
+  "com.typesafe.akka" %% "akka-http-xml"                        % Dependencies.akkaHttpVersion,
 
   // Logging
   "com.typesafe.akka" %% "akka-slf4j"                           % Dependencies.akkaVersion,
