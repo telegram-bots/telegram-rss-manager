@@ -14,7 +14,6 @@ import com.github.telegram_bots.updater.actor.ProxyProvider._
 import com.github.telegram_bots.updater.component.HttpClient
 import com.typesafe.config.Config
 
-import scala.concurrent.duration._
 import scala.concurrent.{Future, TimeoutException}
 
 class ProxyProvider(config: Config) extends Actor with ReactiveActor {
@@ -23,7 +22,7 @@ class ProxyProvider(config: Config) extends Actor with ReactiveActor {
   var running: Boolean = false
 
   override def receive: Receive = {
-    case Get =>
+    case GetRequest =>
       if (!running && proxies.size() <= props.minSize) {
         running = true
         downloadProxies
@@ -31,7 +30,8 @@ class ProxyProvider(config: Config) extends Actor with ReactiveActor {
           .doOnComplete { _ => running = false }
       }
 
-      sender ! proxies.poll(timeout.duration._1, timeout.duration._2)
+      val proxy = proxies.poll(timeout.duration._1, timeout.duration._2)
+      if (proxy != null) sender ! GetResponse(proxy)
   }
 
   private def downloadProxies: Source[Proxy, Future[NotUsed]] = {
@@ -65,7 +65,9 @@ class ProxyProvider(config: Config) extends Actor with ReactiveActor {
 }
 
 object ProxyProvider {
-  case object Get
+  case object GetRequest
+
+  case class GetResponse(proxy: Proxy)
 
   class Properties(root: Config) extends ConfigProperties(root, "akka.actor.config.proxy-provider") {
     val downloadSize: Int = self.getInt("download-size")

@@ -1,52 +1,39 @@
 package com.github.telegram_bots.updater.actor
 
-import akka.actor.{Actor, ActorRef}
-import akka.pattern.ask
-import com.github.telegram_bots.core.Implicits.ExtendedFuture
+import akka.actor.{Actor, ActorRef, Terminated}
 import com.github.telegram_bots.core.actor.ReactiveActor
-import com.github.telegram_bots.core.domain.Types._
-import com.github.telegram_bots.updater.actor.ChannelStorage.UnlockAllRequest
-import com.github.telegram_bots.updater.actor.Master.{Next, Start}
-import com.github.telegram_bots.updater.actor.ProxyProvider.Get
+import com.github.telegram_bots.updater.actor.Master.WorkAvailable
+import com.github.telegram_bots.updater.actor.Worker.Work
 import com.softwaremill.tagging.@@
 
-import scala.language.postfixOps
+class Master(channelStorage: ActorRef @@ ChannelStorage) extends Actor with ReactiveActor {
+  var workers: Set[ActorRef] = Set()
+  var initialized = false
 
-class Master(
-    proxyProvider: ActorRef @@ ProxyProvider,
-    channelParser: ActorRef @@ ChannelParser,
-    channelStorage: ActorRef @@ ChannelStorage,
-    postStorage: ActorRef @@ PostStorage
-) extends Actor with ReactiveActor {
+  override def preStart(): Unit = channelStorage ! ChannelStorage.UnlockAllRequest
+
   override def receive: Receive = {
-    case Start =>
-      channelStorage ! UnlockAllRequest
-
     case ChannelStorage.UnlockAllResponse =>
-      for (_ <- 1 to 5) self ! Next
+      log.info("Master ready")
+      initialized = true
+      workers foreach (_ ! WorkAvailable)
 
-    case Next =>
-      channelStorage ! ChannelStorage.GetRequest
+    case Worker.Register(worker) =>
+      log.info(s"Worker $worker registered")
+      context.watch(worker)
+      workers += worker
 
-    case ChannelStorage.GetResponse(channel) =>
-      channelParser ! ChannelParser.Start(channel, getProxy)
+    case Terminated(worker) =>
+      log.warning(s"Worker $worker died")
+      context.unwatch(worker)
+      workers -= worker
 
-    case ChannelParser.Complete(channel, lastPostId, posts) =>
-      val newLastPostId = lastPostId.getOrElse(channel.lastPostId)
-      postStorage ! PostStorage.SaveRequest(channel.copy(lastPostId = newLastPostId), posts)
-
-    case PostStorage.SaveResponse(channel) =>
-      channelStorage ! ChannelStorage.UpdateRequest(channel)
-
-    case ChannelStorage.UpdateResponse(channel) =>
-      log.info(s"Channel $channel was successfully updated")
+    case Worker.RequestWork =>
+      log.debug(s"Worker $sender requested work")
+      if (initialized) sender ! Work
   }
-
-  private def getProxy: Proxy = (proxyProvider ? Get).get.asInstanceOf[Proxy]
 }
 
 object Master {
-  object Start
-
-  object Next
+  case object WorkAvailable
 }

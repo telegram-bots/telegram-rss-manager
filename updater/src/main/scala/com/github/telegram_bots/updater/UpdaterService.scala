@@ -2,7 +2,6 @@ package com.github.telegram_bots.updater
 
 import com.github.telegram_bots.core.config.ConfigModule
 import com.github.telegram_bots.updater.actor.ActorModule
-import com.github.telegram_bots.updater.actor.Master.Start
 import com.github.telegram_bots.updater.persistence.PersistenceModule
 
 import scala.concurrent.Await
@@ -14,7 +13,8 @@ object UpdaterService extends App
   with PersistenceModule
   with ActorModule
 {
-  master ! Start
+  val masterInstance = master
+  val workers = for (_ <- 1 to 5) yield createWorker
 
   Await.result(system.whenTerminated, Duration.Inf)
 }

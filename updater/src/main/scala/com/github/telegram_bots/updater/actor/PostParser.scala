@@ -7,39 +7,40 @@ import com.github.telegram_bots.core.Implicits._
 import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.core.domain.Types._
 import com.github.telegram_bots.core.domain._
-import com.github.telegram_bots.updater.actor.PostParser.{ParseRequest, ParseResponse}
+import com.github.telegram_bots.updater.actor.ChannelParser.{Failure, Next}
+import com.github.telegram_bots.updater.actor.PostParser.{Parse, ParsingException}
 import com.github.telegram_bots.updater.component.{HttpClient, PostDataParser}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class PostParser extends Actor with ReactiveActor {
   def receive: Receive = {
-    case ParseRequest(channel, postId, proxy) =>
+    case Parse(channel, postId, proxy) =>
       val response = download(channel, postId, proxy)
         .flatMap(checkResponse)
         .map(parse(channel, postId))
-        .doOnNext(post => log.debug(s"Parsed post: ${channel.url} [$postId] $post"))
-        .map(ParseResponse(channel, _))
-        .doOnError(e => log.warning(s"Failed to parse post: ${e.getMessage}"))
+        .doOnNext(post => log.debug(s"Parsed post: ${channel.url} [$postId] ${post.getClass.getSimpleName}"))
+        .map(Next(channel, _))
+        .recover { case e: ParsingException => Failure(e) }
 
       pipe(response) to sender
   }
 
-  private def download(channel: Channel, postId: PostID, proxy: Proxy): Future[Document] = {
-    HttpClient.get(s"https://t.me/${channel.url}/$postId?embed=1&single=1", proxy)
+  private def download(channel: Channel, postId: PostID, proxy: Proxy): Future[Document] =
+    HttpClient.get(s"https://t.me/${channel.url}/$postId?embed=1&single=1", proxy, 2 seconds)
       .flatMap(_.getBody.runWith(Sink.head))
       .map(Jsoup.parse)
-  }
 
   private def checkResponse(doc: Document): Future[Option[Document]] = {
     val error = doc.select(".tgme_widget_message_error").text.trim
 
     error match {
       case e if e == "Post not found" => Future.successful(Option.empty)
-      case e if e contains "Channel with username" => Future.failed(new RuntimeException(e))
+      case e if e contains "Channel with username" => Future.failed(ParsingException(e))
       case _ => Future.successful(Option(doc))
     }
   }
@@ -63,7 +64,7 @@ class PostParser extends Actor with ReactiveActor {
 }
 
 object PostParser {
-  case class ParseRequest(channel: Channel, postId: PostID, proxy: Proxy)
+  case class Parse(channel: Channel, postId: PostID, proxy: Proxy)
 
-  case class ParseResponse(channel: Channel, post: Post)
+  case class ParsingException(message: String) extends Exception(message)
 }

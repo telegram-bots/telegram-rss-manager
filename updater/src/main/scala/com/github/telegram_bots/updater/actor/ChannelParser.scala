@@ -1,65 +1,98 @@
 package com.github.telegram_bots.updater.actor
 
-import akka.actor.{Actor, ActorRef}
-import com.github.telegram_bots.core.Implicits.ExtendedAnyRef
+import java.util.concurrent.TimeoutException
+
+import akka.actor.{ActorRef, FSM}
+import akka.event.{Logging, LoggingAdapter}
 import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.core.config.ConfigProperties
 import com.github.telegram_bots.core.domain.Types._
 import com.github.telegram_bots.core.domain.{Channel, Post, PresentPost}
 import com.github.telegram_bots.updater.actor.ChannelParser._
-import com.github.telegram_bots.updater.actor.PostParser.{ParseRequest, ParseResponse}
+import com.github.telegram_bots.updater.actor.PostParser.Parse
 import com.softwaremill.tagging.@@
 import com.typesafe.config.Config
 
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 
-class ChannelParser(config: Config, postParser: ActorRef @@ PostParser) extends Actor with ReactiveActor {
+class ChannelParser(config: Config, postParser: ActorRef @@ PostParser) extends FSM[State, Data] with ReactiveActor {
+  override implicit val log: LoggingAdapter = Logging(system, this)
   val props: Properties = new Properties(config)
-  val postStorage: mutable.Map[ChannelURL, ListBuffer[Post]] = mutable.Map()
-  val senders: mutable.Map[ChannelURL, ActorRef] = mutable.Map()
 
-  override def receive: Receive = {
-    case Start(channel, proxy) => start(channel, proxy)
-    case ParseResponse(channel, post) => process(channel, post)
+  startWith(Idle, Uninitialized)
+
+  when(Idle) {
+    case Event(Start(channel, proxy), Uninitialized) =>
+      val Channel(_, url, currentPostId) = channel
+      val range = currentPostId + 1 to currentPostId + props.batchSize
+      log.info(s"Start parsing: $url [$range] $proxy")
+
+      for (postId <- range) postParser ! Parse(channel, postId, proxy)
+
+      goto(Processing) using StateData(sender, channel, range, List())
   }
 
-  private def start(channel: Channel, proxy: Proxy): Unit = {
-    val Channel(_, url, startPostId) = channel
-    val endPostId = startPostId + props.batchSize - 1
+  when(Processing, stateTimeout = props.batchSize * 2 seconds) {
+    case Event(Next(channel, post), StateData(respondTo, _, range, posts)) =>
+      val newPosts = posts :+ post
+      if (!range.contains(post.id)) {
+        stay
+      } else if (newPosts.lengthCompare(props.batchSize) != 0) {
+        stay using StateData(respondTo, channel, range, newPosts)
+      } else {
+        complete(respondTo, channel, newPosts)
 
-    log.info(s"Start parsing: $url [$startPostId..$endPostId] $proxy")
+        goto(Idle) using Uninitialized
+      }
+    case Event(Failure(e), StateData(respondTo, channel, _, posts)) =>
+      complete(respondTo, channel, posts, Some(e))
 
-    senders(url) = sender
+      goto(Idle) using Uninitialized
+    case Event(StateTimeout, StateData(respondTo, channel, _, posts)) =>
+      complete(respondTo, channel, posts, Some(new TimeoutException("Timed out parsing")))
 
-    for (postId <- startPostId to endPostId) {
-      postParser ! ParseRequest(channel, postId, proxy)
-    }
+      goto(Idle) using Uninitialized
   }
 
-  private def process(channel: Channel, post: Post): Unit = {
-    val url = channel.url
-    val postCount = postStorage.getOrElseUpdate(url, ListBuffer()).also(_ += post).size
+  private def complete(
+    respondTo: ActorRef,
+    channel: Channel,
+    posts: Seq[Post],
+    failure: Option[Exception] = None
+  ): Unit = {
+    val sortedPosts = posts.sortBy(_.id)
+    val nonEmptyPosts = sortedPosts.collect { case post: PresentPost => post }
+    val range = Range.inclusive(
+      sortedPosts.headOption.map(_.id).getOrElse(channel.lastPostId),
+      sortedPosts.lastOption.map(_.id).getOrElse(channel.lastPostId)
+    )
+    val message = s"${channel.url} [$range] (${nonEmptyPosts.map(_.id)} not empty)"
 
-    if (postCount == props.batchSize) {
-      val sender = senders.remove(url).get
-      val allPosts = postStorage.remove(url).get.sortBy(_.id)
-      val nonEmptyPosts = allPosts.collect { case post: PresentPost => post }
-      val firstPostId = allPosts.head.id
-      val lastPostId = nonEmptyPosts.lastOption.map(_.id)
-
-      log.info(s"Complete parsing: $url [$firstPostId..${lastPostId.getOrElse("-")}] (${nonEmptyPosts.size} not empty)")
-
-      sender ! Complete(channel, lastPostId, nonEmptyPosts)
+    failure match {
+      case Some(e) => log.warning(s"Complete parsing with failure: $message", e)
+      case _ => log.info(s"Complete parsing: $message")
     }
+
+    respondTo ! Complete(channel, range.end, nonEmptyPosts)
   }
 }
 
 object ChannelParser {
-  case class Start(channel: Channel, proxy: Proxy)
+  sealed trait Event
+  case class Start(channel: Channel, proxy: Proxy) extends Event
+  case class Next(channel: Channel, post: Post) extends Event
+  case class Failure(cause: Exception) extends Event
+  case class Complete(channel: Channel, endPostId: PostID, posts: Seq[Post]) extends Event
 
-  case class Complete(channel: Channel, endPostId: Option[PostID], posts: Seq[Post])
+  sealed trait State
+  case object Idle extends State
+  case object Processing extends State
+
+  sealed trait Data
+  case object Uninitialized extends Data
+  case class StateData(respondTo: ActorRef, channel: Channel, range: Range, posts: Seq[Post]) extends Data
 
   class Properties(root: Config) extends ConfigProperties(root, "akka.actor.config.channel-parser") {
     val batchSize: Int = self.getInt("batch-size")

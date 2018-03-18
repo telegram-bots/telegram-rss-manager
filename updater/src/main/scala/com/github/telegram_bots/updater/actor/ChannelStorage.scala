@@ -1,6 +1,7 @@
 package com.github.telegram_bots.updater.actor
 
 import akka.actor.Actor
+import akka.pattern.pipe
 import com.github.telegram_bots.core.Implicits.ExtendedFuture
 import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.core.config.ConfigProperties
@@ -8,68 +9,47 @@ import com.github.telegram_bots.core.domain.Channel
 import com.github.telegram_bots.updater.actor.ChannelStorage._
 import com.github.telegram_bots.updater.persistence.ChannelRepository
 import com.typesafe.config.Config
-import slick.jdbc.PostgresProfile.api._
-
-import scala.concurrent.Future
 
 class ChannelStorage(config: Config, repository: ChannelRepository) extends Actor with ReactiveActor {
   val props = new Properties(config)
 
   override def receive: Receive = {
     case GetRequest =>
-      log.debug("Requested GetRequest")
+      log.debug("GetRequest")
 
-      for (channel <- getAndLock().get) {
-        log.debug(s"Respond with GetResponse($channel)")
-        sender ! GetResponse(channel)
-      }
+      val response = repository.getAndLock(props.systemName)
+        .map(GetResponse)
+        .doOnNext(logResponse)
+        .doOnError(e => log.error("GetRequest failed", e))
+
+      pipe(response) to sender
     case UpdateRequest(channel) =>
-      log.debug(s"Requested UpdateRequest for $channel")
+      log.debug(s"UpdateRequest($channel)")
 
-      val updatedChannel = updateAndUnlock(channel).get
-      log.debug(s"Respond with UpdateResponse($updatedChannel)")
-      sender ! UpdateResponse(updatedChannel)
+      val response = repository.updateAndUnlock(channel, props.systemName)
+        .map(_ => UpdateResponse(channel))
+        .doOnNext(logResponse)
+        .doOnError(e => log.error(s"UpdateRequest($channel) failed", e))
+
+      pipe(response) to sender
     case UnlockAllRequest =>
-      log.debug("Requested UnlockAllRequest")
+      log.debug("UnlockAllRequest")
 
-      unlockAll().get
-      log.debug(s"Respond with UnlockAllResponse")
-      sender ! UnlockAllResponse
+      val response = repository.unlockAll(props.systemName)
+        .map(_ => UnlockAllResponse)
+        .doOnNext(logResponse)
+        .doOnError(e => log.error("UnlockAllRequest failed", e))
+
+      pipe(response) to sender
   }
 
-  private def getAndLock(): Future[Option[Channel]] = {
-    val action = DBIO
-      .from(
-        for {
-          channel <- repository.firstNonLocked()
-          _ <- channel.map(repository.lock(_, props.systemName)).getOrElse(Future.successful(Nil))
-        } yield channel
-      )
-      .transactionally
-
-    repository.run(action)
-  }
-
-  private def updateAndUnlock(channel: Channel): Future[Channel] = {
-    val action = DBIO
-      .from(
-        for {
-          _ <- repository.update(channel)
-          _ <- repository.unlock(channel, props.systemName)
-        } yield channel
-      )
-      .transactionally
-
-    repository.run(action)
-  }
-
-  private def unlockAll(): Future[Int] = repository.unlockAll(props.systemName)
+  private def logResponse(response: Any): Unit = log.info(s"$response")
 }
 
 object ChannelStorage {
   case object GetRequest
 
-  case class GetResponse(channel: Channel)
+  case class GetResponse(channel: Option[Channel])
 
   case class UpdateRequest(channel: Channel)
 
