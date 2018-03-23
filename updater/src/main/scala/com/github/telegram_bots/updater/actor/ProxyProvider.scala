@@ -5,19 +5,21 @@ import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 import akka.NotUsed
 import akka.actor.Actor
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.scaladsl.{Sink, Source}
 import com.github.telegram_bots.core.Implicits._
 import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.core.config.ConfigProperties
 import com.github.telegram_bots.core.domain.Types._
 import com.github.telegram_bots.updater.actor.ProxyProvider._
-import com.github.telegram_bots.updater.component.HttpClient
+import com.github.telegram_bots.updater.component.{HttpClient, ProxyDownloader, ProxyDownloaders}
 import com.typesafe.config.Config
 
 import scala.concurrent.{Future, TimeoutException}
 
 class ProxyProvider(config: Config) extends Actor with ReactiveActor {
   val props = new Properties(config)
+  val downloader: ProxyDownloader = ProxyDownloaders.PUB_PROXY
   val proxies: BlockingQueue[Proxy] = new LinkedBlockingQueue()
   var running: Boolean = false
 
@@ -25,7 +27,7 @@ class ProxyProvider(config: Config) extends Actor with ReactiveActor {
     case GetRequest =>
       if (!running && proxies.size() <= props.minSize) {
         running = true
-        downloadProxies
+        download
           .runWith(Sink.foreach(proxies.offer(_)))
           .doOnComplete { _ => running = false }
       }
@@ -34,32 +36,17 @@ class ProxyProvider(config: Config) extends Actor with ReactiveActor {
       if (proxy != null) sender ! GetResponse(proxy)
   }
 
-  private def downloadProxies: Source[Proxy, Future[NotUsed]] = {
-    val uri = s"http://pubproxy.com/api/proxy?format=txt&type=http&limit=${props.downloadSize}&level=anonymous&https=true&user_agent=true"
-
-    Source.lazilyAsync { () => HttpClient.get(uri) }
-      .flatMapConcat(parseResponse)
-      .log("downloaded")
+  private def download: Source[Proxy, NotUsed] = downloader.download(props.downloadSize)
       .mapAsyncUnordered(props.downloadSize)(proxy => Future.successful(proxy).zip(checkWorking(proxy)))
       .recover { case _: TimeoutException => (Proxy.EMPTY, false) }
       .filter(_._2)
       .map(_._1)
       .log("checked")
-  }
-
-  private def parseResponse(response: HttpResponse): Source[Proxy, Any] = {
-    response.getBody
-      .mapConcat(_.split(System.lineSeparator()).toStream)
-      .map(line => {
-        val Array(host, port) = line.split(":")
-        Proxy(host, port.toInt)
-      })
-  }
 
   private def checkWorking(proxy: Proxy): Future[Boolean] = {
-    HttpClient.get("https://t.me/by_cotique/6", proxy, timeout)
+    HttpClient.execute("https://t.me/by_cotique/6", proxy = proxy, timeout = timeout)
       .recover { case _ => HttpResponse(status = StatusCodes.Forbidden) }
-      .flatMap(_.getBody.runWith(Sink.head))
+      .flatMap(r => Unmarshal(r.entity).to[String])
       .map(_.contains("https://twitter.com/Hagnir/status/771707002632429569"))
   }
 }

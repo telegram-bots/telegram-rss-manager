@@ -3,8 +3,10 @@ package com.github.telegram_bots.core
 import akka.http.scaladsl.coding.{Deflate, Gzip, NoCoding}
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.headers.HttpEncodings
+import akka.http.scaladsl.unmarshalling.Unmarshal
+import akka.stream.Materializer
 import akka.stream.scaladsl.Source
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 
 import scala.collection.SortedMap
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -31,14 +33,11 @@ object Implicits {
   }
 
   implicit class ExtendedHttpResponse(response: HttpResponse) {
-    def getBody: Source[String, Any] = response.entity.dataBytes.map(_.utf8String)
-
     def decode: HttpResponse = {
       val decoder = response.encoding match {
         case HttpEncodings.gzip => Gzip
         case HttpEncodings.deflate => Deflate
-        case HttpEncodings.identity => NoCoding
-        case _ => throw new IllegalArgumentException(response.encoding.value)
+        case _ => NoCoding
       }
 
       decoder.decodeMessage(response)

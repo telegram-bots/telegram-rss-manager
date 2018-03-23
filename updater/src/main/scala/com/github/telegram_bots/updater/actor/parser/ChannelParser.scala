@@ -1,4 +1,4 @@
-package com.github.telegram_bots.updater.actor
+package com.github.telegram_bots.updater.actor.parser
 
 import java.util.concurrent.TimeoutException
 
@@ -8,8 +8,8 @@ import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.core.config.ConfigProperties
 import com.github.telegram_bots.core.domain.Types._
 import com.github.telegram_bots.core.domain.{Channel, Post, PresentPost}
-import com.github.telegram_bots.updater.actor.ChannelParser._
-import com.github.telegram_bots.updater.actor.PostParser.Parse
+import com.github.telegram_bots.updater.actor.parser.ChannelParser._
+import com.github.telegram_bots.updater.actor.parser.PostParser.Parse
 import com.softwaremill.tagging.@@
 import com.typesafe.config.Config
 
@@ -62,12 +62,10 @@ class ChannelParser(config: Config, postParser: ActorRef @@ PostParser) extends 
     posts: Seq[Post],
     failure: Option[Exception] = None
   ): Unit = {
+    def getId(post: Option[Post]) = post.map(_.id).getOrElse(channel.lastPostId)
     val sortedPosts = posts.sortBy(_.id)
     val nonEmptyPosts = sortedPosts.collect { case post: PresentPost => post }
-    val range = Range.inclusive(
-      sortedPosts.headOption.map(_.id).getOrElse(channel.lastPostId),
-      sortedPosts.lastOption.map(_.id).getOrElse(channel.lastPostId)
-    )
+    val range = getId(sortedPosts.headOption) to getId(sortedPosts.lastOption)
     val message = s"${channel.url} [$range] (${nonEmptyPosts.map(_.id)} not empty)"
 
     failure match {

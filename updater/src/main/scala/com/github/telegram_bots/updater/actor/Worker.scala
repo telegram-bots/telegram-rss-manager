@@ -7,6 +7,8 @@ import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.core.domain.Channel
 import com.github.telegram_bots.updater.actor.ProxyProvider.GetRequest
 import com.github.telegram_bots.updater.actor.Worker.{Register, RequestWork, Work}
+import com.github.telegram_bots.updater.actor.parser.ChannelParser
+import com.github.telegram_bots.updater.actor.storage.{ChannelStorage, PostStorage}
 import com.softwaremill.tagging.@@
 
 import scala.concurrent.duration._

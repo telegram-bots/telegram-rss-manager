@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorRef, Terminated}
 import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.updater.actor.Master.WorkAvailable
 import com.github.telegram_bots.updater.actor.Worker.Work
+import com.github.telegram_bots.updater.actor.storage.ChannelStorage
 import com.softwaremill.tagging.@@
 
 class Master(channelStorage: ActorRef @@ ChannelStorage) extends Actor with ReactiveActor {

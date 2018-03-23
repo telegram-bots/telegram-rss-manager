@@ -1,14 +1,14 @@
-package com.github.telegram_bots.updater.actor
+package com.github.telegram_bots.updater.actor.parser
 
 import akka.actor.Actor
+import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.pattern.pipe
-import akka.stream.scaladsl.Sink
 import com.github.telegram_bots.core.Implicits._
 import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.core.domain.Types._
 import com.github.telegram_bots.core.domain._
-import com.github.telegram_bots.updater.actor.ChannelParser.{Failure, Next}
-import com.github.telegram_bots.updater.actor.PostParser.{Parse, ParsingException}
+import com.github.telegram_bots.updater.actor.parser.ChannelParser.{Failure, Next}
+import com.github.telegram_bots.updater.actor.parser.PostParser.{Parse, ParsingException}
 import com.github.telegram_bots.updater.component.{HttpClient, PostDataParser}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -18,6 +18,11 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class PostParser extends Actor with ReactiveActor {
+  private val queryParams = Map(
+    "embed" -> "1",
+    "single" -> "1"
+  )
+
   def receive: Receive = {
     case Parse(channel, postId, proxy) =>
       val response = download(channel, postId, proxy)
@@ -31,8 +36,8 @@ class PostParser extends Actor with ReactiveActor {
   }
 
   private def download(channel: Channel, postId: PostID, proxy: Proxy): Future[Document] =
-    HttpClient.get(s"https://t.me/${channel.url}/$postId?embed=1&single=1", proxy, 2 seconds)
-      .flatMap(_.getBody.runWith(Sink.head))
+    HttpClient.execute(s"https://t.me/${channel.url}/$postId", params = queryParams, proxy = proxy, timeout = 2 seconds)
+      .flatMap(r => Unmarshal(r.entity).to[String])
       .map(Jsoup.parse)
 
   private def checkResponse(doc: Document): Future[Option[Document]] = {

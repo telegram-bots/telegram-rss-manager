@@ -1,4 +1,4 @@
-package com.github.telegram_bots.updater.actor
+package com.github.telegram_bots.updater.actor.storage
 
 import akka.actor.Actor
 import akka.pattern.pipe
@@ -6,7 +6,7 @@ import com.github.telegram_bots.core.Implicits.ExtendedFuture
 import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.core.config.ConfigProperties
 import com.github.telegram_bots.core.domain.Channel
-import com.github.telegram_bots.updater.actor.ChannelStorage._
+import com.github.telegram_bots.updater.actor.storage.ChannelStorage._
 import com.github.telegram_bots.updater.persistence.ChannelRepository
 import com.typesafe.config.Config
 

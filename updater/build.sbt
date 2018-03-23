@@ -24,7 +24,8 @@ libraryDependencies ++= Seq(
   "com.softwaremill.macwire" %% "util"                          % Dependencies.macWireVersion,
   "com.softwaremill.macwire" %% "proxy"                         % Dependencies.macWireVersion,
 
-  "net.ruippeixotog" %% "scala-scraper"                         % "2.1.0",
+  "org.jsoup" % "jsoup"                                         % "1.11.2",
+  "org.json4s" %% "json4s-native"                               % "3.5.3",
 
   // Tests
   "com.typesafe.akka" %% "akka-testkit"                         % Dependencies.akkaVersion % Test
