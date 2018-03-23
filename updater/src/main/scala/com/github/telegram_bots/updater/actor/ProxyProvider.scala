@@ -19,7 +19,7 @@ import scala.concurrent.{Future, TimeoutException}
 
 class ProxyProvider(config: Config) extends Actor with ReactiveActor {
   val props = new Properties(config)
-  val downloader: ProxyDownloader = ProxyDownloaders.PUB_PROXY
+  val downloader: ProxyDownloader = ProxyDownloaders.MIXED_PROXY
   val proxies: BlockingQueue[Proxy] = new LinkedBlockingQueue()
   var running: Boolean = false
 
@@ -28,7 +28,7 @@ class ProxyProvider(config: Config) extends Actor with ReactiveActor {
       if (!running && proxies.size() <= props.minSize) {
         running = true
         download
-          .runWith(Sink.foreach(proxies.offer(_)))
+          .runForeach(proxies.offer(_))
           .doOnComplete { _ => running = false }
       }
 
@@ -46,7 +46,8 @@ class ProxyProvider(config: Config) extends Actor with ReactiveActor {
   private def checkWorking(proxy: Proxy): Future[Boolean] = {
     HttpClient.execute("https://t.me/by_cotique/6", proxy = proxy, timeout = timeout)
       .recover { case _ => HttpResponse(status = StatusCodes.Forbidden) }
-      .flatMap(r => Unmarshal(r.entity).to[String])
+      .map(_.entity)
+      .flatMap(Unmarshal(_).to[String])
       .map(_.contains("https://twitter.com/Hagnir/status/771707002632429569"))
   }
 }

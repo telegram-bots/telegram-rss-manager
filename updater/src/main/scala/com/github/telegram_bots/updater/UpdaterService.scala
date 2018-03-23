@@ -14,7 +14,7 @@ object UpdaterService extends App
   with ActorModule
 {
   val masterInstance = master
-  val workers = for (_ <- 1 to 5) yield createWorker
+  val workerInstances = (1 to config.getInt("akka.workers")).map(_ => createWorker)
 
   Await.result(system.whenTerminated, Duration.Inf)
 }

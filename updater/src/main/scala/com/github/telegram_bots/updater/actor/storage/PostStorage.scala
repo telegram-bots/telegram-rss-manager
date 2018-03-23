@@ -17,7 +17,7 @@ class PostStorage(repository: PostRepository) extends Actor with ReactiveActor {
         .filter(_.contains(posts.size))
         .map(_ => SaveResponse(url))
         .doOnNext(response => log.info(s"$response"))
-        .doOnError(e => log.error(s">>>>>>>>>>> SaveRequest($url, ${posts.map(_.id)}) failed", e))
+        .doOnError(e => log.error(s"SaveRequest($url, ${posts.map(_.id)}) failed", e))
 
       pipe(response) to sender
   }

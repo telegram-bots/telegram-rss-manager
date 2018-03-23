@@ -24,14 +24,8 @@ trait ActorModule { this: PersistenceModule with ConfigModule =>
     )
     .taggedWith[PostParser]
 
-  val channelParser: ActorRef @@ ChannelParser = system
-    .actorOf(
-      wireProps[ChannelParser]
-        .withDispatcher("akka.actor.dispatcher.parser-dispatcher")
-        .withRouter(new SmallestMailboxPool(5)),
-      ChannelParser.getClass.getSimpleName
-    )
-    .taggedWith[ChannelParser]
+  def createChannelParser: ActorRef @@ ChannelParser =
+    wireAnonymousActor[ChannelParser].taggedWith[ChannelParser]
 
   val postStorage: ActorRef @@ PostStorage = system
     .actorOf(

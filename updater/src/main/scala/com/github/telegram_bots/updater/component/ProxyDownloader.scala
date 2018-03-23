@@ -51,13 +51,11 @@ private[component] object PubProxyCom extends ProxyDownloader {
     implicit system: ActorSystem,
     dispatcher: ExecutionContext,
     materializer: Materializer
-  ): Source[Proxy, NotUsed] = {
-    Source(1 to size by sizePerRequest)
-      .mapAsync(1) { _ => after(1 second, system.scheduler)(HttpClient.execute(uri, params = queryParams)) }
-      .flatMapConcat(parseResponse)
-      .log("downloaded")
-      .mapMaterializedValue(_ => NotUsed)
-  }
+  ): Source[Proxy, NotUsed] = Source(1 to size by sizePerRequest)
+    .mapAsync(1) { _ => after(1 second, system.scheduler)(HttpClient.execute(uri, params = queryParams)) }
+    .flatMapConcat(parseResponse)
+    .log("downloaded")
+    .mapMaterializedValue(_ => NotUsed)
 
   private def parseResponse(response: HttpResponse)(
     implicit system: ActorSystem,
@@ -94,12 +92,10 @@ private[component] object GetProxyListCom extends ProxyDownloader {
     implicit system: ActorSystem,
     dispatcher: ExecutionContext,
     materializer: Materializer
-  ): Source[Proxy, NotUsed] = {
-    Source(1 to size)
-      .mapAsync(10) { _ => HttpClient.execute(uri, params = queryParams) }
-      .flatMapConcat(parseResponse)
-      .log("downloaded")
-  }
+  ): Source[Proxy, NotUsed] = Source(1 to size)
+    .mapAsync(10) { _ => HttpClient.execute(uri, params = queryParams) }
+    .flatMapConcat(parseResponse)
+    .log("downloaded")
 
   private def parseResponse(response: HttpResponse)(
     implicit system: ActorSystem,
@@ -130,22 +126,19 @@ private[component] object FreeProxyList extends ProxyDownloader {
     implicit system: ActorSystem,
     dispatcher: ExecutionContext,
     materializer: Materializer
-  ): Source[Proxy, NotUsed] = {
-    Source(1 to size by sizePerRequest)
-      .mapAsync(1) { _ => HttpClient.execute(uri) }
-      .flatMapConcat(parseResponse)
-      .log("downloaded")
-      .take(size)
-      .mapMaterializedValue(_ => NotUsed)
-  }
+  ): Source[Proxy, NotUsed] = Source(1 to size by sizePerRequest)
+    .mapAsync(1) { _ => HttpClient.execute(uri) }
+    .flatMapConcat(parseResponse)
+    .log("downloaded")
+    .take(size)
+    .mapMaterializedValue(_ => NotUsed)
 
   private def parseResponse(response: HttpResponse)(
     implicit system: ActorSystem,
     dispatcher: ExecutionContext,
     materializer: Materializer
-  ): Source[Proxy, Any] = {
-    Source
-      .lazilyAsync { () => Unmarshal(response.entity).to[String] }
+  ): Source[Proxy, Any] = Source
+    .lazilyAsync { () => Unmarshal(response.entity).to[String] }
       .map(Jsoup.parse)
       .map(_.select("#proxylisttable tbody tr").asScala.toList)
       .flatMapConcat(Source(_))
@@ -155,7 +148,6 @@ private[component] object FreeProxyList extends ProxyDownloader {
 
         Proxy(host, port.toInt)
       })
-  }
 }
 
 private[component] object SpysOne extends ProxyDownloader {
@@ -174,14 +166,12 @@ private[component] object SpysOne extends ProxyDownloader {
     implicit system: ActorSystem,
     dispatcher: ExecutionContext,
     materializer: Materializer
-  ): Source[Proxy, NotUsed] = {
-    Source(1 to size by sizePerRequest)
-      .mapAsync(1) { _ => HttpClient.execute(uri, method = POST, params = formData) }
-      .flatMapConcat(parseResponse)
-      .log("downloaded")
-      .take(size)
-      .mapMaterializedValue(_ => NotUsed)
-  }
+  ): Source[Proxy, NotUsed] = Source(1 to size by sizePerRequest)
+    .mapAsync(1) { _ => HttpClient.execute(uri, method = POST, params = formData) }
+    .flatMapConcat(parseResponse)
+    .log("downloaded")
+    .take(size)
+    .mapMaterializedValue(_ => NotUsed)
 
   private def parseResponse(response: HttpResponse)(
     implicit system: ActorSystem,
@@ -208,8 +198,7 @@ private[component] object SpysOne extends ProxyDownloader {
         .toInt
     }
 
-    Source
-      .lazilyAsync { () => Unmarshal(response.entity).to[String] }
+    Source.lazilyAsync { () => Unmarshal(response.entity).to[String] }
       .map(Jsoup.parse)
       .map(html => (
         extractVars(html.select("script").get(3).html()),
@@ -239,11 +228,10 @@ private[component] class MixedProxy extends ProxyDownloader {
     implicit system: ActorSystem,
     dispatcher: ExecutionContext,
     materializer: Materializer
-  ): Source[Proxy, NotUsed] = {
-    current.download(size).recoverWithRetries(-1, { case _: LimitReachedException => next.download(size) })
-  }
+  ): Source[Proxy, NotUsed] = current.download(size)
+    .recoverWithRetries(-1, { case _: LimitReachedException => next.download(size) })
 
-  private def current: ProxyDownloader = downloaders(currentPos)
+  private def current: ProxyDownloader = this.synchronized { downloaders(currentPos) }
 
   private def next: ProxyDownloader = this.synchronized {
     currentPos = if (currentPos + 1 == downloaders.size) 0 else currentPos + 1

@@ -37,7 +37,8 @@ class PostParser extends Actor with ReactiveActor {
 
   private def download(channel: Channel, postId: PostID, proxy: Proxy): Future[Document] =
     HttpClient.execute(s"https://t.me/${channel.url}/$postId", params = queryParams, proxy = proxy, timeout = 2 seconds)
-      .flatMap(r => Unmarshal(r.entity).to[String])
+      .map(_.entity)
+      .flatMap(Unmarshal(_).to[String])
       .map(Jsoup.parse)
 
   private def checkResponse(doc: Document): Future[Option[Document]] = {

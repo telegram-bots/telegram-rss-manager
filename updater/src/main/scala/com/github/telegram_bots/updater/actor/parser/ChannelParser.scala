@@ -56,6 +56,12 @@ class ChannelParser(config: Config, postParser: ActorRef @@ PostParser) extends 
       goto(Idle) using Uninitialized
   }
 
+  whenUnhandled {
+    case Event(Failure(e), _) =>
+      log.debug(s"Received failure for discarded request: $e")
+      stay
+  }
+
   private def complete(
     respondTo: ActorRef,
     channel: Channel,
