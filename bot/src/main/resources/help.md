@@ -15,4 +15,4 @@ for example, `/subscribe @telegram`. This would add Telegram News to your feed.
 
 *Feedback*
 
-[our GitHub repo](https://github.com/telegram-bots/telegram-channels-feed)
+[our GitHub repo](https://github.com/telegram-bots/telegram-rss-manager)
