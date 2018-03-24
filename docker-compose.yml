@@ -1,0 +1,68 @@
+version: '2.1'
+services:
+  bot:
+    image: telegram-bots/telegram-rss-manager-bot:latest
+    env_file: .app_env
+    environment:
+      - JAVA_OPTS=-Xmx256M -Xms256M
+      - APP_CONF=
+      - LOGGING_LEVEL=DEBUG
+      - WORK_MODE=polling
+      - POLLING_INTERVAL=30
+      - WEBHOOK_URL=/
+      - CERT_PATH=
+    mem_limit: 512mb
+    volumes:
+      - ~/.telegram-rss-manager/bot:/tmp
+    ports:
+      - "8701:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    image: telegram-bots/telegram-rss-manager-web:latest
+    env_file: .app_env
+    environment:
+      - JAVA_OPTS=-Xmx256M -Xms256M
+      - APP_CONF=
+      - LOGGING_LEVEL=DEBUG
+      - SYSTEM_NAME=web1
+    mem_limit: 512mb
+    volumes:
+      - ~/.telegram-rss-manager/web:/tmp
+    ports:
+      - "8691:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  updater:
+    image: telegram-bots/telegram-rss-manager-updater:latest
+    env_file: .app_env
+    environment:
+      - JAVA_OPTS=-Xmx256M -Xms256M
+      - APP_CONF=
+      - LOGGING_LEVEL=DEBUG
+      - SYSTEM_NAME=updater1
+      - WORKERS=5
+    mem_limit: 512mb
+    volumes:
+      - ~/.telegram-rss-manager/updater:/tmp
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    build: build/db
+    image: telegram-bots/telegram-rss-manager-db:latest
+    volumes:
+      - ~/.telegram-rss-manager/db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+    restart: unless-stopped

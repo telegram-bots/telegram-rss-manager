@@ -1,10 +1,9 @@
 import sbt.Keys.libraryDependencies
 
-name := Build.namePrefix + "root"
-
 lazy val commonSettings = Seq(
   organization := "telegram-bots",
   scalaVersion := Build.scalaVersion,
+  isSnapshot := true,
 
   libraryDependencies ++= Seq(
     // Config
@@ -35,18 +34,14 @@ lazy val core = project
 lazy val bot = project
   .settings(commonSettings)
   .dependsOn(core)
-  .enablePlugins(DockerPlugin)
 
 lazy val updater = project
   .settings(commonSettings)
   .dependsOn(core)
-  .enablePlugins(DockerPlugin)
 
 lazy val web = project
   .settings(commonSettings)
   .dependsOn(core)
-  .enablePlugins(DockerPlugin)
 
 lazy val root = (project in file("."))
-  .settings(commonSettings)
   .aggregate(core, bot, updater, web)

@@ -2,6 +2,8 @@ name := Build.namePrefix + "bot"
 
 version := "0.0.1"
 
+enablePlugins(sbtdocker.DockerPlugin, JavaAppPackaging, AshScriptPlugin)
+
 libraryDependencies ++= Seq(
   // Bot
   "info.mukel" %% "telegrambot4s"                               % "3.0.14",
@@ -27,18 +29,13 @@ dependencyOverrides ++= Seq(
 )
 
 dockerfile in docker := {
-  val jarFile: File = sbt.Keys.`package`.in(Compile, packageBin).value
-  val classpath = (managedClasspath in Compile).value
-  val mainclass = mainClass.in(Compile, packageBin).value.getOrElse(sys.error("Expected exactly one main class"))
-  val jarTarget = s"/app/${jarFile.getName}"
-  val classpathString = classpath.files.map("/app/" + _.getName)
-    .mkString(":") + ":" + jarTarget
+  val appDir: File = stage.value
+  val targetDir = "/app"
 
   new Dockerfile {
     from("openjdk:8-jre-alpine")
-    add(classpath.files, "/app/")
-    add(jarFile, jarTarget)
-    entryPoint("java", "-cp", classpathString, mainclass)
+    entryPoint(s"$targetDir/bin/${executableScriptName.value}")
+    copy(appDir, targetDir, chown = "daemon:daemon")
   }
 }
 
@@ -46,6 +43,6 @@ imageNames in docker := Seq(
   ImageName(
     namespace = Some(organization.value),
     repository = name.value,
-    tag = Some("v" + version.value)
+    tag = Some(if (isSnapshot.value) "latest" else "v" + version.value)
   )
 )
