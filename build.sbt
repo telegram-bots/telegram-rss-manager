@@ -18,6 +18,12 @@ lazy val commonSettings = Seq(
     // DB
     "com.typesafe.slick" %% "slick"                               % Dependencies.slickVersion % "provided",
 
+    // IOC
+    "com.softwaremill.macwire" %% "macros"                        % Dependencies.macWireVersion % "provided",
+    "com.softwaremill.macwire" %% "macrosakka"                    % Dependencies.macWireVersion % "provided",
+    "com.softwaremill.macwire" %% "util"                          % Dependencies.macWireVersion,
+    "com.softwaremill.macwire" %% "proxy"                         % Dependencies.macWireVersion,
+
     // Tests
     "org.scalatest" %% "scalatest"                                % "3.0.5" % Test
   )
@@ -25,6 +31,11 @@ lazy val commonSettings = Seq(
 
 lazy val core = project
   .settings(commonSettings)
+
+lazy val bot = project
+  .settings(commonSettings)
+  .dependsOn(core)
+  .enablePlugins(DockerPlugin)
 
 lazy val updater = project
   .settings(commonSettings)
@@ -38,4 +49,4 @@ lazy val web = project
 
 lazy val root = (project in file("."))
   .settings(commonSettings)
-  .aggregate(core, updater, web)
+  .aggregate(core, bot, updater, web)

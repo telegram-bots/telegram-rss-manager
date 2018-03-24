@@ -1,15 +1,33 @@
-package com.github.telegram_bots.updater.persistence
+package com.github.telegram_bots.core.persistence
 
 import java.sql.Timestamp
 
 import com.github.telegram_bots.core.domain.Channel
+import com.github.telegram_bots.core.domain.Types.ChannelURL
 import com.github.telegram_bots.core.persistence.Mappers.channelMapper
 import slick.jdbc.PostgresProfile.api._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 class ChannelRepository(db: Database) {
+  private implicit val executionContext: ExecutionContext = db.ioExecutionContext
   private val channelQuery: TableQuery[Channels] = TableQuery[Channels]
+
+  def find(url: String): Future[Option[Channel]] = {
+    val query = channelQuery.filter(_.url === url)
+
+    db.run { query.result.headOption }
+  }
+
+  def getOrCreate(url: ChannelURL, name: String): Future[Channel] = {
+    val query = for {
+      existing <- channelQuery.filter(_.url === url).result.headOption
+      row = existing.map(_.copy(name = name)) getOrElse Channel(0, url, name, -1)
+      result <- (channelQuery returning channelQuery).insertOrUpdate(row).map(_.getOrElse(row))
+    } yield result
+
+    db.run { query.transactionally }
+  }
 
   def getAndLock(workerSystem: String): Future[Option[Channel]] = {
     val query = sql"""
@@ -50,10 +68,11 @@ class ChannelRepository(db: Database) {
   class Channels(tag: Tag) extends Table[Channel](tag, "channels") {
     def id: Rep[Int] = column[Int]("id", O.PrimaryKey, O.AutoInc)
     def url: Rep[String] = column[String]("url")
+    def name: Rep[String] = column[String]("name")
     def lastPostId: Rep[Int] = column[Int]("last_post_id")
     def worker: Rep[Option[String]] = column[Option[String]]("worker")
     def updatedAt: Rep[Timestamp] = column[Timestamp]("updated_at")
 
-    def * = (id, url, lastPostId) <> ((Channel.apply _).tupled, Channel.unapply)
+    def * = (id, url, name, lastPostId) <> ((Channel.apply _).tupled, Channel.unapply)
   }
 }

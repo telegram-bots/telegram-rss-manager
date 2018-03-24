@@ -2,7 +2,7 @@ package com.github.telegram_bots.web.actor
 
 import akka.actor.{ActorRef, ActorSystem}
 import com.github.telegram_bots.core.config.ConfigModule
-import com.github.telegram_bots.web.persistence.PersistenceModule
+import com.github.telegram_bots.core.persistence.PersistenceModule
 import com.softwaremill.macwire.akkasupport._
 import com.softwaremill.tagging._
 

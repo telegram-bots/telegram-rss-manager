@@ -25,7 +25,7 @@ class ChannelParser(config: Config, postParser: ActorRef @@ PostParser) extends 
 
   when(Idle) {
     case Event(Start(channel, proxy), Uninitialized) =>
-      val Channel(_, url, currentPostId) = channel
+      val Channel(_, url, _, currentPostId) = channel
       val range = currentPostId + 1 to currentPostId + props.batchSize
       log.info(s"Start parsing: $url [$range] $proxy")
 

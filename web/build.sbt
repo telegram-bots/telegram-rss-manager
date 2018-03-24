@@ -19,12 +19,6 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick-hikaricp"                      % Dependencies.slickVersion,
   "org.postgresql"     %  "postgresql"                          % Dependencies.postgresVersion,
 
-  // IOC
-  "com.softwaremill.macwire" %% "macros"                        % Dependencies.macWireVersion % "provided",
-  "com.softwaremill.macwire" %% "macrosakka"                    % Dependencies.macWireVersion % "provided",
-  "com.softwaremill.macwire" %% "util"                          % Dependencies.macWireVersion,
-  "com.softwaremill.macwire" %% "proxy"                         % Dependencies.macWireVersion,
-
   "org.scala-lang.modules" %% "scala-xml"                       % "1.1.0",
 
   // Tests

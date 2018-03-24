@@ -1,4 +1,4 @@
-package com.github.telegram_bots.updater.persistence
+package com.github.telegram_bots.core.persistence
 
 import java.time.LocalDateTime
 
@@ -12,6 +12,21 @@ import scala.concurrent.Future
 
 class PostRepository(db: Database) {
   private val postsQuery: TableQuery[Posts] = TableQuery[Posts]
+
+  def getLatest(userId: Long, subscriptionName: String, limit: Int): Future[Seq[Post]] = {
+    val query = sql"""
+      SELECT p.*
+      FROM users AS u
+        JOIN subscriptions AS s ON s.user_id = u.id
+        JOIN channels AS c ON c.id = s.channel_id
+        JOIN posts AS p ON p.channel_link = c.url
+      WHERE u.telegram_id = $userId AND s.name = $subscriptionName
+      ORDER BY p.date DESC
+      LIMIT $limit;
+      """
+
+    db.run { query.as[PresentPost] }
+  }
 
   def saveAll(posts: Seq[Post]): Future[Option[Int]] =
     db.run { postsQuery ++= posts.map(_.asInstanceOf[PresentPost]) }

@@ -5,10 +5,10 @@ import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.server.Directives._
 import akka.stream.ActorMaterializer
 import com.github.telegram_bots.core.config.ConfigModule
+import com.github.telegram_bots.core.persistence.PersistenceModule
 import com.github.telegram_bots.web.actor.ActorModule
 import com.github.telegram_bots.web.actor.FeedResponder.GetRequest
 import com.github.telegram_bots.web.component.ImperativeRequestDirective
-import com.github.telegram_bots.web.persistence.PersistenceModule
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn

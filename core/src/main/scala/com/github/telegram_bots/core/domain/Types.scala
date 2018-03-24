@@ -5,8 +5,6 @@ object Types {
 
   type ChannelURL = String
 
-  type ID = Option[Int]
-
   case class Proxy(host: String, port: Int)
 
   object Proxy {

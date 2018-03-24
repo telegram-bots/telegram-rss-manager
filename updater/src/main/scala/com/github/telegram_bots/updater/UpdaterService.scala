@@ -1,8 +1,8 @@
 package com.github.telegram_bots.updater
 
 import com.github.telegram_bots.core.config.ConfigModule
+import com.github.telegram_bots.core.persistence.PersistenceModule
 import com.github.telegram_bots.updater.actor.ActorModule
-import com.github.telegram_bots.updater.persistence.PersistenceModule
 
 import scala.concurrent.Await
 import scala.concurrent.duration._

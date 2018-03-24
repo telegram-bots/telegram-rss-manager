@@ -5,8 +5,8 @@ import akka.pattern.pipe
 import com.github.telegram_bots.core.Implicits.ExtendedFuture
 import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.core.domain.{Channel, Post}
+import com.github.telegram_bots.core.persistence.PostRepository
 import com.github.telegram_bots.updater.actor.storage.PostStorage.{SaveRequest, SaveResponse}
-import com.github.telegram_bots.updater.persistence.PostRepository
 
 class PostStorage(repository: PostRepository) extends Actor with ReactiveActor {
   override def receive: Receive = {

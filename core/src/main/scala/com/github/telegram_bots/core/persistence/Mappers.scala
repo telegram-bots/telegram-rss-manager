@@ -3,7 +3,7 @@ package com.github.telegram_bots.core.persistence
 import java.sql.Timestamp
 import java.time.{LocalDateTime, ZoneId}
 
-import com.github.telegram_bots.core.domain.{Channel, PostType, PresentPost}
+import com.github.telegram_bots.core.domain._
 import slick.jdbc.PostgresProfile.api._
 import slick.jdbc.{GetResult, JdbcType}
 
@@ -31,5 +31,9 @@ object Mappers {
     r.<<
   ))
 
-  implicit val channelMapper: GetResult[Channel] = GetResult(r => Channel(r.<<, r.<<, r.<<))
+  implicit val channelMapper: GetResult[Channel] = GetResult(r => Channel(r.<<, r.<<, r.<<, r.<<))
+
+  implicit val userMapper: GetResult[User] = GetResult(r => User(r.<<, r.<<))
+
+  implicit val subscriptionMapper: GetResult[Subscription] = GetResult(r => Subscription(r.<<, r.<<, r.<<))
 }

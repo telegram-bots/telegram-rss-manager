@@ -1,13 +1,10 @@
-name := Build.namePrefix + "updater"
+name := Build.namePrefix + "bot"
 
 version := "0.0.1"
 
 libraryDependencies ++= Seq(
-  // Akka
-  "com.typesafe.akka" %% "akka-actor"                           % Dependencies.akkaVersion,
-  "com.typesafe.akka" %% "akka-stream"                          % Dependencies.akkaVersion,
-  "com.typesafe.akka" %% "akka-remote"                          % Dependencies.akkaVersion,
-  "com.typesafe.akka" %% "akka-http"                            % Dependencies.akkaHttpVersion,
+  // Bot
+  "info.mukel" %% "telegrambot4s"                               % "3.0.14",
 
   // Logging
   "com.typesafe.akka" %% "akka-slf4j"                           % Dependencies.akkaVersion,
@@ -18,11 +15,15 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick-hikaricp"                      % Dependencies.slickVersion,
   "org.postgresql"     %  "postgresql"                          % Dependencies.postgresVersion,
 
-  "org.jsoup" % "jsoup"                                         % "1.11.2",
-  "org.json4s" %% "json4s-native"                               % "3.5.3",
-
   // Tests
   "com.typesafe.akka" %% "akka-testkit"                         % Dependencies.akkaVersion % Test
+)
+
+dependencyOverrides ++= Seq(
+  // Akka
+  "com.typesafe.akka" %% "akka-actor"                           % Dependencies.akkaVersion,
+  "com.typesafe.akka" %% "akka-stream"                          % Dependencies.akkaVersion,
+  "com.typesafe.akka" %% "akka-http"                            % Dependencies.akkaHttpVersion
 )
 
 dockerfile in docker := {

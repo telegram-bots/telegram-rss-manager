@@ -4,8 +4,8 @@ import akka.actor.Actor
 import akka.pattern.pipe
 import com.github.telegram_bots.core.actor.ReactiveActor
 import com.github.telegram_bots.core.domain.Post
+import com.github.telegram_bots.core.persistence.PostRepository
 import com.github.telegram_bots.web.actor.PostStorage.{GetLatestRequest, GetLatestResponse}
-import com.github.telegram_bots.web.persistence.PostRepository
 
 class PostStorage(repository: PostRepository) extends Actor with ReactiveActor {
   override def receive: Receive = {

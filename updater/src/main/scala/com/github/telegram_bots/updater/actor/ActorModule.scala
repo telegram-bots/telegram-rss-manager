@@ -3,9 +3,9 @@ package com.github.telegram_bots.updater.actor
 import akka.actor.{ActorRef, ActorSystem}
 import akka.routing.SmallestMailboxPool
 import com.github.telegram_bots.core.config.ConfigModule
+import com.github.telegram_bots.core.persistence.PersistenceModule
 import com.github.telegram_bots.updater.actor.parser.{ChannelParser, PostParser}
 import com.github.telegram_bots.updater.actor.storage.{ChannelStorage, PostStorage}
-import com.github.telegram_bots.updater.persistence.PersistenceModule
 import com.softwaremill.macwire.akkasupport._
 import com.softwaremill.tagging._
 
