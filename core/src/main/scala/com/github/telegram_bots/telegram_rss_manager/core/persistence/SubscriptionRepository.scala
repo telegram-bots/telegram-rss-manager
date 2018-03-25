@@ -25,12 +25,12 @@ class SubscriptionRepository(db: Database) {
     db.run { query }
   }
 
-  def list(userId: Int, name: String = "main"): Future[Seq[Channel]] = {
+  def list(userId: Int): Future[Seq[Channel]] = {
     val query = sql"""
       SELECT c.*
       FROM subscriptions AS s
       JOIN channels AS c ON c.id = s.channel_id
-      WHERE s.user_id = $userId AND s.name = $name
+      WHERE s.user_id = $userId
       """
 
     db.run { query.as[Channel] }
