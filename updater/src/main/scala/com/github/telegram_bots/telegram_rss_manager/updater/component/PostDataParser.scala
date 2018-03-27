@@ -22,6 +22,12 @@ class PostDataParser(doc: Document) {
     .flatMap(_.select("span").asScala.lastOption.map(_.text))
     .get
 
+  def parsePostId: Int = """.*?(\d+)""".r
+    .findFirstMatchIn(doc.select(".tgme_widget_message_link a").text)
+    .map(_.group(1))
+    .map(_.toInt)
+    .get
+
   def parseAuthor: Option[String] = (doc.select(".tgme_widget_message_from_author").text()?)
     .flatMap(_.optionIfBlank)
 
