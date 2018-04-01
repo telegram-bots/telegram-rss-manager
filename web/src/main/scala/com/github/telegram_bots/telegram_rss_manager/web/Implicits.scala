@@ -5,14 +5,14 @@ import java.nio.charset.{Charset, StandardCharsets}
 
 import akka.util.ByteString
 
-import scala.xml.Elem
+import scala.xml.Node
 import scala.xml.XML.write
 
 object Implicits {
-  implicit class ExtendedElem(elem: Elem) {
+  implicit class ExtendedNode(node: Node) {
     def toByteString(charset: Charset = StandardCharsets.UTF_8): ByteString = {
       val writer = new StringWriter()
-      write(writer, elem, charset.name(), xmlDecl = true, null)
+      write(writer, node, charset.name(), xmlDecl = true, null)
       ByteString(writer.toString)
     }
   }

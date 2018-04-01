@@ -5,10 +5,10 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.pattern.pipe
 import com.github.telegram_bots.telegram_rss_manager.core.Implicits._
 import com.github.telegram_bots.telegram_rss_manager.core.actor.ReactiveActor
-import com.github.telegram_bots.telegram_rss_manager.core.domain.Types._
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Post.PostID
 import com.github.telegram_bots.telegram_rss_manager.core.domain._
 import com.github.telegram_bots.telegram_rss_manager.updater.actor.parser.ChannelParser.{Failure, Next}
-import com.github.telegram_bots.telegram_rss_manager.updater.actor.parser.PostParser.{Parse, ParsingException}
+import com.github.telegram_bots.telegram_rss_manager.updater.actor.parser.PostParser._
 import com.github.telegram_bots.telegram_rss_manager.updater.component.{HttpClient, PostDataParser}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -18,11 +18,6 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class PostParser extends Actor with ReactiveActor {
-  private val queryParams = Map(
-    "embed" -> "1",
-    "single" -> "1"
-  )
-
   def receive: Receive = {
     case Parse(channel, postId, proxy) =>
       val response = download(channel, postId, proxy)
@@ -36,7 +31,7 @@ class PostParser extends Actor with ReactiveActor {
   }
 
   private def download(channel: Channel, postId: PostID, proxy: Proxy): Future[Document] =
-    HttpClient.execute(s"https://t.me/${channel.url}/$postId", params = queryParams, proxy = proxy, timeout = 2 seconds)
+    HttpClient.execute(urlTemplate.format(channel.url, postId), params = queryParams, proxy = proxy, timeout = 2 seconds)
       .map(_.entity)
       .flatMap(Unmarshal(_).to[String])
       .map(Jsoup.parse)
@@ -70,6 +65,13 @@ class PostParser extends Actor with ReactiveActor {
 }
 
 object PostParser {
+  val urlTemplate = "https://t.me/%s/%d"
+
+  val queryParams = Map(
+    "embed" -> "1",
+    "single" -> "1"
+  )
+
   case class Parse(channel: Channel, postId: PostID, proxy: Proxy)
 
   case class ParsingException(message: String) extends Exception(message)

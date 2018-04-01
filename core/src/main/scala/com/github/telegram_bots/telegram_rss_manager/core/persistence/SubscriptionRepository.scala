@@ -1,5 +1,8 @@
 package com.github.telegram_bots.telegram_rss_manager.core.persistence
 
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Channel.ChannelID
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Subscription.SubscriptionName
+import com.github.telegram_bots.telegram_rss_manager.core.domain.User.UserID
 import com.github.telegram_bots.telegram_rss_manager.core.domain.{Channel, Subscription}
 import com.github.telegram_bots.telegram_rss_manager.core.persistence.Mappers.channelMapper
 import slick.jdbc.PostgresProfile.api._
@@ -8,16 +11,16 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class SubscriptionRepository(db: Database) {
   private implicit val executionContext: ExecutionContext = db.ioExecutionContext
-  private val subQuery: TableQuery[Subscriptions] = TableQuery[Subscriptions]
+  private val subscriptionQuery = TableQuery[Subscriptions]
 
-  def subscribe(userId: Int, channelId: Int, name: String = "main"): Future[Int] = {
-    val query = subQuery += Subscription(userId, channelId, name)
+  def subscribe(userId: UserID, channelId: ChannelID, name: SubscriptionName = "main"): Future[Int] = {
+    val query = subscriptionQuery += Subscription(userId, channelId, name)
 
     db.run { query }
   }
 
-  def unsubscribe(userId: Int, channelId: Int, name: String = "main"): Future[Int] = {
-    val query = subQuery.filter(_.userId === userId)
+  def unsubscribe(userId: UserID, channelId: ChannelID, name: SubscriptionName = "main"): Future[Int] = {
+    val query = subscriptionQuery.filter(_.userId === userId)
       .filter(_.channelId === channelId)
       .filter(_.name === name)
       .delete
@@ -25,7 +28,7 @@ class SubscriptionRepository(db: Database) {
     db.run { query }
   }
 
-  def list(userId: Int): Future[Seq[Channel]] = {
+  def list(userId: UserID): Future[Seq[Channel]] = {
     val query = sql"""
       SELECT c.*
       FROM subscriptions AS s

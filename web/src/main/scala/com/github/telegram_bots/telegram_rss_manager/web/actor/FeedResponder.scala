@@ -6,6 +6,8 @@ import akka.http.scaladsl.model.MediaTypes.`application/rss+xml`
 import akka.http.scaladsl.model.StatusCodes.{GatewayTimeout, OK}
 import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse}
 import com.github.telegram_bots.telegram_rss_manager.core.actor.ReactiveActor
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Subscription.SubscriptionName
+import com.github.telegram_bots.telegram_rss_manager.core.domain.User.TelegramID
 import com.github.telegram_bots.telegram_rss_manager.web.actor.FeedResponder._
 import com.github.telegram_bots.telegram_rss_manager.web.component.ImperativeRequestContext
 import com.softwaremill.tagging.@@
@@ -22,16 +24,20 @@ class FeedResponder(
   override def receive: Receive = waitingForRequest
 
   def waitingForRequest: Receive = {
-    case GetRequest(requestContext, userId, subscriptionName, limit) =>
-      storage ! PostStorage.GetLatestRequest(userId, subscriptionName, limit)
+    case GetRequest(requestContext, telegramID, subscriptionName, limit) =>
+      storage ! PostStorage.GetLatestRequest(telegramID, subscriptionName, limit)
 
       context setReceiveTimeout (1 second)
-      context become waitingForStorageResponse(requestContext, userId, subscriptionName)
+      context become waitingForStorageResponse(requestContext, telegramID, subscriptionName)
   }
 
-  def waitingForStorageResponse(requestContext: ImperativeRequestContext, userId: Long, subscriptionName: String): Receive = {
+  def waitingForStorageResponse(
+    requestContext: ImperativeRequestContext,
+    telegramID: TelegramID,
+    subscriptionName: SubscriptionName
+  ): Receive = {
     case PostStorage.GetLatestResponse(posts) =>
-      generator ! RSSGenerator.GenerateRequest(userId, subscriptionName, posts)
+      generator ! RSSGenerator.GenerateRequest(telegramID, subscriptionName, posts)
 
       context setReceiveTimeout (500 millis)
       context become waitingForGeneratorResponse(requestContext)
@@ -55,5 +61,10 @@ class FeedResponder(
 }
 
 object FeedResponder {
-  case class GetRequest(requestContext: ImperativeRequestContext, userId: Long, subscriptionName: String, limit: Int)
+  case class GetRequest(
+     requestContext: ImperativeRequestContext,
+     telegramID: TelegramID,
+     subscriptionName: SubscriptionName,
+     limit: Int
+  )
 }

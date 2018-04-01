@@ -10,7 +10,7 @@ import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSett
 import akka.http.scaladsl.{ClientTransport, Http}
 import akka.util.Timeout
 import com.github.telegram_bots.telegram_rss_manager.core.Implicits.ExtendedHttpResponse
-import com.github.telegram_bots.telegram_rss_manager.core.domain.Types.Proxy
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Proxy
 
 import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}

@@ -6,8 +6,11 @@ import akka.actor.Actor
 import akka.util.ByteString
 import com.github.telegram_bots.telegram_rss_manager.core.actor.ReactiveActor
 import com.github.telegram_bots.telegram_rss_manager.core.config.ConfigProperties
-import com.github.telegram_bots.telegram_rss_manager.core.domain.{Post, PostType, PresentPost}
-import com.github.telegram_bots.telegram_rss_manager.web.Implicits.ExtendedElem
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Subscription.SubscriptionName
+import com.github.telegram_bots.telegram_rss_manager.core.domain.User.TelegramID
+import com.github.telegram_bots.telegram_rss_manager.core.domain.{Post, PresentPost}
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Post.PostType._
+import com.github.telegram_bots.telegram_rss_manager.web.Implicits.ExtendedNode
 import com.github.telegram_bots.telegram_rss_manager.web.actor.RSSGenerator.{GenerateRequest, GenerateResponse, Properties}
 import com.github.telegram_bots.telegram_rss_manager.web.component.RSSFeedGenerator
 import com.github.telegram_bots.telegram_rss_manager.web.component.RSSFeedGenerator.{FeedChannel, FeedEntry}
@@ -23,12 +26,12 @@ class RSSGenerator(config: Config) extends Actor with ReactiveActor {
       sender ! GenerateResponse(generate(userId, subscriptionName, posts))
   }
 
-  private def generate(userId: Long, subscriptionName: String, posts: Seq[Post]): ByteString = {
+  private def generate(telegramID: TelegramID, subscriptionName: SubscriptionName, posts: Seq[Post]): ByteString = {
     RSSFeedGenerator
       .generate(
         FeedChannel(
           title = s"$subscriptionName - ${props.titlePostfix}",
-          link = s"${props.linkPrefix}/$userId/$subscriptionName",
+          link = s"${props.linkPrefix}/$telegramID/$subscriptionName",
           description = props.description,
           managingEditor = props.managingEditor,
           webMaster = props.webMaster,
@@ -46,15 +49,15 @@ class RSSGenerator(config: Config) extends Actor with ReactiveActor {
 
   private def wrapMedia(post: PresentPost): String = post.`type` match {
     case _ if post.fileURL.isEmpty => ""
-    case PostType.IMAGE => s"""<img src="${post.fileURL}" /><br>"""
-    case PostType.STICKER => s"""<img src="${post.fileURL}" /><br>"""
-    case PostType.VIDEO => s"""<video src="${post.fileURL}" /><br>"""
+    case IMAGE => s"""<img src="${post.fileURL}" /><br>"""
+    case STICKER => s"""<img src="${post.fileURL}" /><br>"""
+    case VIDEO => s"""<video src="${post.fileURL}" /><br>"""
     case _ => s"${post.fileURL}<br>"
   }
 }
 
 object RSSGenerator {
-  case class GenerateRequest(userId: Long, subscriptionName: String, posts: Seq[Post])
+  case class GenerateRequest(telegramID: TelegramID, subscriptionName: SubscriptionName, posts: Seq[Post])
 
   case class GenerateResponse(payload: ByteString)
 

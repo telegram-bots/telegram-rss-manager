@@ -1,7 +1,7 @@
 package com.github.telegram_bots.telegram_rss_manager.bot.component
 
 import com.github.telegram_bots.telegram_rss_manager.bot.exception.GenericSubscriptionException
-import com.github.telegram_bots.telegram_rss_manager.core.domain.Types.ChannelURL
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Channel.ChannelURL
 import info.mukel.telegrambot4s.api.Extractors.commandArguments
 import info.mukel.telegrambot4s.api.declarative.{Action, Commands => OldCommands}
 import info.mukel.telegrambot4s.models.ChatType.ChatType

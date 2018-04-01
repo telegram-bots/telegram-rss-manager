@@ -2,7 +2,9 @@ package com.github.telegram_bots.telegram_rss_manager.core.persistence
 
 import java.time.LocalDateTime
 
-import com.github.telegram_bots.telegram_rss_manager.core.domain.PostType.PostType
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Post.PostType.PostType
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Subscription.SubscriptionName
+import com.github.telegram_bots.telegram_rss_manager.core.domain.User.TelegramID
 import com.github.telegram_bots.telegram_rss_manager.core.domain.{Post, PresentPost}
 import com.github.telegram_bots.telegram_rss_manager.core.persistence.Mappers._
 import slick.jdbc.PostgresProfile.api._
@@ -11,9 +13,9 @@ import slick.lifted.Index
 import scala.concurrent.Future
 
 class PostRepository(db: Database) {
-  private val postsQuery: TableQuery[Posts] = TableQuery[Posts]
+  private val postsQuery = TableQuery[Posts]
 
-  def getLatest(userId: Long, subscriptionName: String, limit: Int): Future[Seq[Post]] = {
+  def getLatest(userId: TelegramID, subscriptionName: SubscriptionName, limit: Int): Future[Seq[Post]] = {
     val query = sql"""
       SELECT p.*
       FROM users AS u

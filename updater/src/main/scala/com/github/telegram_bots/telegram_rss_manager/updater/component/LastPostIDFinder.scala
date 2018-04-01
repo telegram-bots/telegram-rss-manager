@@ -1,6 +1,7 @@
 package com.github.telegram_bots.telegram_rss_manager.updater.component
 
-import com.github.telegram_bots.telegram_rss_manager.core.domain.Types.{ChannelURL, PostID}
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Channel.ChannelURL
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Post.PostID
 
 import scala.annotation.tailrec
 
@@ -34,7 +35,6 @@ object LastPostIDFinder {
       }
     }
 
-    val (lastPostId, path) = loop(startPostID, startPostID to Int.MaxValue, List())
-    (lastPostId, path)
+    loop(startPostID, startPostID to Int.MaxValue, List())
   }
 }

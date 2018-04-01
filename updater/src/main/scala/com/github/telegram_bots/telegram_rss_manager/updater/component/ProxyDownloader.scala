@@ -8,7 +8,7 @@ import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.pattern.after
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
-import com.github.telegram_bots.telegram_rss_manager.core.domain.Types.Proxy
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Proxy
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import org.jsoup.Jsoup

@@ -24,11 +24,11 @@ object WebService extends App
   implicit val dispatcher: ExecutionContextExecutor = system.dispatcher
 
   val route =
-    path(LongNumber / Segment) { (userId, subscriptionName) =>
+    path(LongNumber / Segment) { (telegramID, subscriptionName) =>
       get {
         encodeResponseWith(Gzip) {
           imperativelyComplete { ctx =>
-            createFeedResponder ! GetRequest(ctx, userId, subscriptionName, 500)
+            createFeedResponder ! GetRequest(ctx, telegramID, subscriptionName, 500)
           }
         }
       }

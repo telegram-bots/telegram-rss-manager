@@ -6,8 +6,8 @@ import akka.actor.{ActorRef, FSM}
 import akka.event.{Logging, LoggingAdapter}
 import com.github.telegram_bots.telegram_rss_manager.core.actor.ReactiveActor
 import com.github.telegram_bots.telegram_rss_manager.core.config.ConfigProperties
-import com.github.telegram_bots.telegram_rss_manager.core.domain.Types._
-import com.github.telegram_bots.telegram_rss_manager.core.domain.{Channel, Post, PresentPost}
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Post.PostID
+import com.github.telegram_bots.telegram_rss_manager.core.domain.{Channel, Post, PresentPost, Proxy}
 import com.github.telegram_bots.telegram_rss_manager.updater.actor.parser.ChannelParser._
 import com.github.telegram_bots.telegram_rss_manager.updater.actor.parser.PostParser.Parse
 import com.softwaremill.tagging.@@

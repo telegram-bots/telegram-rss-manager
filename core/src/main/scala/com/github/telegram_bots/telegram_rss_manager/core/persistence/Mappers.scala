@@ -18,11 +18,11 @@ object Mappers {
     _.toLocalDateTime
   )
 
-  implicit val postTypeMapper: JdbcType[PostType.Value] = enumMapper(PostType)
+  implicit val postTypeMapper: JdbcType[Post.PostType.Value] = enumMapper(Post.PostType)
 
   implicit val postMapper: GetResult[PresentPost] = GetResult(r => PresentPost(
     r.<<,
-    PostType.withName(r.<<),
+    Post.PostType.withName(r.<<),
     r.<<,
     r.<<?,
     r.<<[java.sql.Timestamp].toLocalDateTime,

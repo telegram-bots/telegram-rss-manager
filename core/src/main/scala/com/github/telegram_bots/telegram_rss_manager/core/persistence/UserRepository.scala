@@ -1,24 +1,25 @@
 package com.github.telegram_bots.telegram_rss_manager.core.persistence
 
 import com.github.telegram_bots.telegram_rss_manager.core.domain.User
+import com.github.telegram_bots.telegram_rss_manager.core.domain.User.TelegramID
 import slick.jdbc.PostgresProfile.api._
 
 import scala.concurrent.{ExecutionContext, Future}
 
 class UserRepository(db: Database) {
   private implicit val executionContext: ExecutionContext = db.ioExecutionContext
-  private val userQuery: TableQuery[Users] = TableQuery[Users]
+  private val userQuery = TableQuery[Users]
 
-  def find(telegramId: Long): Future[Option[User]] = {
-    val query = userQuery.filter(_.telegramId === telegramId)
+  def find(chatId: TelegramID): Future[Option[User]] = {
+    val query = userQuery.filter(_.telegramId === chatId)
 
     db.run { query.result.headOption }
   }
 
-  def getOrCreate(telegramId: Long): Future[User] = {
+  def getOrCreate(chatId: TelegramID): Future[User] = {
     val query = for {
-      existing <- userQuery.filter(_.telegramId === telegramId).result.headOption
-      row = existing getOrElse User(0, telegramId)
+      existing <- userQuery.filter(_.telegramId === chatId).result.headOption
+      row = existing getOrElse User(0, chatId)
       result <- (userQuery returning userQuery).insertOrUpdate(row).map(_.getOrElse(row))
     } yield result
 

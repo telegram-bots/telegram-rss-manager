@@ -5,6 +5,6 @@ import java.io.File
 import com.typesafe.config.{Config, ConfigFactory}
 
 trait ConfigModule {
-  lazy val config: Config = ConfigFactory.parseFile(new File(s"${sys.env.getOrElse("APP_CONF", ".")}"))
+  lazy val config: Config = ConfigFactory.parseFile(new File(sys.env.getOrElse("APP_CONF", ".")))
     .withFallback(ConfigFactory.load())
 }

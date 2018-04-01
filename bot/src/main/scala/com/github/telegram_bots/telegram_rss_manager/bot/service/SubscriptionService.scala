@@ -2,7 +2,8 @@ package com.github.telegram_bots.telegram_rss_manager.bot.service
 
 import com.github.telegram_bots.telegram_rss_manager.bot.exception.{AlreadySubscribedException, NotSubscribedException}
 import com.github.telegram_bots.telegram_rss_manager.core.domain.Channel
-import com.github.telegram_bots.telegram_rss_manager.core.domain.Types.ChannelURL
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Channel._
+import com.github.telegram_bots.telegram_rss_manager.core.domain.User.TelegramID
 import com.github.telegram_bots.telegram_rss_manager.core.persistence.{ChannelRepository, SubscriptionRepository, UserRepository}
 import com.typesafe.scalalogging.LazyLogging
 import org.postgresql.util.PSQLException
@@ -18,9 +19,9 @@ class SubscriptionService(
 ) extends LazyLogging {
   private implicit val executionContext: ExecutionContext = db.ioExecutionContext
 
-  def subscribe(chatId: Long, channelURL: ChannelURL, channelName: String): Future[Channel] = {
+  def subscribe(telegramID: TelegramID, channelURL: ChannelURL, channelName: ChannelName): Future[Channel] = {
     val action = DBIO.from {
-      val userFuture = userRepository.getOrCreate(chatId)
+      val userFuture = userRepository.getOrCreate(telegramID)
       val channelFuture = channelRepository.getOrCreate(channelURL, channelName)
 
       for {
@@ -36,9 +37,9 @@ class SubscriptionService(
       }
   }
 
-  def unsubscribe(chatId: Long, channelURL: ChannelURL): Future[Channel] = {
+  def unsubscribe(telegramID: TelegramID, channelURL: ChannelName): Future[Channel] = {
     val action = DBIO.from {
-      val userFuture = userRepository.find(chatId)
+      val userFuture = userRepository.find(telegramID)
       val channelFuture = channelRepository.find(channelURL)
 
       for {
@@ -55,10 +56,10 @@ class SubscriptionService(
         }
   }
 
-  def list(chatId: Long): Future[Seq[Channel]] = {
+  def list(telegramID: TelegramID): Future[Seq[Channel]] = {
     val action = DBIO.from {
       for {
-        Some(user) <- userRepository.find(chatId)
+        Some(user) <- userRepository.find(telegramID)
         channels <- subsRepository.list(user.id)
       } yield channels
     }

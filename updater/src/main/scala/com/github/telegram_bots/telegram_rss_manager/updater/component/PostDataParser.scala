@@ -3,13 +3,22 @@ package com.github.telegram_bots.telegram_rss_manager.updater.component
 import java.time.LocalDateTime
 
 import com.github.telegram_bots.telegram_rss_manager.core.Implicits._
-import com.github.telegram_bots.telegram_rss_manager.core.domain.PostType._
+import com.github.telegram_bots.telegram_rss_manager.core.domain.Post.PostType._
 import org.jsoup.nodes.Document
 
 import scala.collection.JavaConverters._
 
 class PostDataParser(doc: Document) {
-  lazy val parseType: PostType = parseTypeLazy
+  lazy val parseType: PostType = doc match {
+    case d if !d.select("#sticker_image").isEmpty => STICKER
+    case d if !d.select(".tgme_widget_message_photo").isEmpty => IMAGE
+    case d if !d.select(".tgme_widget_message_location").isEmpty => GEO
+    case d if !d.select(".tgme_widget_message_document_icon").isEmpty => FILE
+    case d if !d.select(".tgme_widget_message_contact").isEmpty => CONTACT
+    case d if !d.select(".tgme_widget_message_document_icon.audio, audio.tgme_widget_message_voice").isEmpty => AUDIO
+    case d if !d.select("video.tgme_widget_message_video, video.tgme_widget_message_roundvideo").isEmpty => VIDEO
+    case _ => TEXT
+  }
 
   def parseContent: String = parseType match {
     case GEO => doc.select(".tgme_widget_message_location_info").asScala.lastOption.map(_.html).getOrElse("")
@@ -65,16 +74,5 @@ class PostDataParser(doc: Document) {
       .attr("src")
       .optionIfBlank
     case _ => Option.empty
-  }
-
-  private def parseTypeLazy: PostType = doc match {
-    case d if !d.select("#sticker_image").isEmpty => STICKER
-    case d if !d.select(".tgme_widget_message_photo").isEmpty => IMAGE
-    case d if !d.select(".tgme_widget_message_location").isEmpty => GEO
-    case d if !d.select(".tgme_widget_message_document_icon").isEmpty => FILE
-    case d if !d.select(".tgme_widget_message_contact").isEmpty => CONTACT
-    case d if !d.select(".tgme_widget_message_document_icon.audio, audio.tgme_widget_message_voice").isEmpty => AUDIO
-    case d if !d.select("video.tgme_widget_message_video, video.tgme_widget_message_roundvideo").isEmpty => VIDEO
-    case _ => TEXT
   }
 }
